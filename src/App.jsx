@@ -696,7 +696,7 @@ function ProductsPage({ products }) {
   const countries = [...new Set(products.map(p=>p.country).filter(Boolean))].sort()
 
   return (
-    <div className="card">
+    <div className="card" style={{overflow:'visible'}}>
       <div className="card-header">
         <div className="card-title">Product Catalogue <span style={{color:'var(--text-3)',fontWeight:400,fontSize:12}}>({filtered.length} of {products.length})</span></div>
         <input className="search-input" placeholder="Search by name, VBN code…" value={search}
@@ -730,11 +730,11 @@ function ProductsPage({ products }) {
         </table>
       </div>
       {totalPages > 1 && (
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 18px',borderTop:'0.5px solid var(--border)'}}>
-          <span style={{fontSize:12,color:'var(--text-3)'}}>Page {page} of {totalPages} · {filtered.length} results</span>
-          <div style={{display:'flex',gap:6}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 20px',borderTop:'0.5px solid var(--border)',background:'var(--surface)'}}>
+          <span style={{fontSize:12,color:'var(--text-3)'}}>Page {page} of {totalPages} · {filtered.length} products</span>
+          <div style={{display:'flex',gap:8}}>
             <button className="btn btn-ghost btn-sm" disabled={page===1} onClick={()=>setPage(p=>p-1)}>← Prev</button>
-            <button className="btn btn-ghost btn-sm" disabled={page===totalPages} onClick={()=>setPage(p=>p+1)}>Next →</button>
+            <button className="btn btn-ghost btn-sm" disabled={page>=totalPages} onClick={()=>setPage(p=>p+1)}>Next →</button>
           </div>
         </div>
       )}
