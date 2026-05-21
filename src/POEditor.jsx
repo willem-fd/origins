@@ -1,0 +1,617 @@
+import { useState, useRef, useCallback, useEffect } from 'react'
+import {
+  DndContext, DragOverlay, closestCenter,
+  PointerSensor, useSensor, useSensors,
+  useDroppable
+} from '@dnd-kit/core'
+import {
+  SortableContext, verticalListSortingStrategy,
+  useSortable, arrayMove
+} from '@dnd-kit/sortable'
+import { CSS as DndCSS } from '@dnd-kit/utilities'
+import { supabase } from './supabase'
+
+const STATUSES = [
+  { key: 'pending',      label: 'Pending',     cls: 'status-pending' },
+  { key: 'confirmed',    label: 'Confirmed',   cls: 'status-confirmed' },
+  { key: 'partial',      label: 'Partial',     cls: 'status-partial' },
+  { key: 'counter_offer',label: 'Counter',     cls: 'status-counter' },
+  { key: 'rejected',     label: 'Rejected',    cls: 'status-rejected' },
+]
+const STATUS_CLS = Object.fromEntries(STATUSES.map(s => [s.key, s.cls]))
+
+const ORDER_TYPES = [
+  { key: 'standing',    label: 'SO', cls: 'ot-so' },
+  { key: 'repeating',   label: 'RO', cls: 'ot-ro' },
+  { key: 'open_market', label: 'OM', cls: 'ot-om' },
+]
+const OT_MAP = Object.fromEntries(ORDER_TYPES.map(o => [o.key, o]))
+
+const BOX_TYPES = ['FB','HB','QB','EB']
+
+function newRow(farmId, boxNr, sortOrder) {
+  return {
+    _id: `new_${Date.now()}_${Math.random()}`,
+    isNew: true,
+    farm_id: farmId,
+    box_nr: boxNr,
+    boxmark: '',
+    box_type: 'HB',
+    product_id: null,
+    order_type: 'open_market',
+    status: 'pending',
+    length_cm: '',
+    stems_ordered: '',
+    stems_per_bunch: 25,
+    price_ordered: '',
+    notes_buyer: '',
+    sort_order: sortOrder,
+  }
+}
+
+function newBox(farmId, boxNr) {
+  return {
+    boxNr,
+    boxmark: '',
+    box_type: 'HB',
+    rows: [newRow(farmId, boxNr, 0)],
+  }
+}
+
+function newFarmBlock(farm) {
+  return {
+    farmId: farm.id,
+    farmName: farm.name,
+    farmCode: farm.code,
+    collapsed: false,
+    boxes: [newBox(farm.id, 1)],
+  }
+}
+
+// ── Status dot with popover ──────────────────────────────────────────────────
+function StatusDot({ status, onChange }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef()
+  useEffect(() => {
+    const close = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [])
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'flex', alignItems: 'center', padding: '0 10px' }}>
+      <div className={`status-dot ${STATUS_CLS[status] || 'status-pending'}`} onClick={() => setOpen(o => !o)} title={status} />
+      {open && (
+        <div className="status-popover">
+          {STATUSES.map(s => (
+            <div key={s.key} className="status-option" onClick={() => { onChange(s.key); setOpen(false) }}>
+              <div className={`status-option-dot ${s.cls}`} />
+              {s.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Sortable product row ─────────────────────────────────────────────────────
+function ProductRow({ row, rowIndex, products, onUpdate, onDelete, onKeyDown, inputRef }) {
+  const {
+    attributes, listeners, setNodeRef, transform, transition, isDragging
+  } = useSortable({ id: row._id, data: { type: 'row', farmId: row.farm_id, boxNr: row.box_nr } })
+
+  const style = { transform: DndCSS.Transform.toString(transform), transition }
+  const product = products.find(p => p.id === row.product_id)
+  const ot = OT_MAP[row.order_type] || OT_MAP.open_market
+
+  const set = (k, v) => onUpdate({ ...row, [k]: v })
+
+  return (
+    <div ref={setNodeRef} style={style} className={`product-row${isDragging ? ' is-dragging' : ''}`}>
+      <span className="row-drag" {...attributes} {...listeners}><i className="ti ti-grip-vertical" aria-hidden="true" /></span>
+      <span className="row-num">{rowIndex + 1}</span>
+
+      {/* Order type */}
+      <div className="cell" style={{ width: 42 }}>
+        <select className="cell-select" style={{ fontSize: 11, fontWeight: 700, color: 'inherit' }}
+          value={row.order_type} onChange={e => set('order_type', e.target.value)}>
+          {ORDER_TYPES.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+        </select>
+      </div>
+
+      {/* Product */}
+      <div className="cell" style={{ flex: 3, minWidth: 180 }}>
+        <select className="cell-select" value={row.product_id || ''} style={{ fontSize: 12.5 }}
+          onChange={e => set('product_id', e.target.value || null)}
+          ref={inputRef}>
+          <option value="">— select variety —</option>
+          {products.map(p => <option key={p.id} value={p.id}>{p.name}{p.vbn_code ? ` (${p.vbn_code})` : ''}</option>)}
+        </select>
+      </div>
+
+      {/* Length */}
+      <div className="cell" style={{ width: 72 }}>
+        <input className="cell-input mono" type="number" placeholder="60" value={row.length_cm}
+          onChange={e => set('length_cm', e.target.value)}
+          onKeyDown={e => onKeyDown(e, row._id, 'length_cm')} />
+      </div>
+
+      {/* Stems */}
+      <div className="cell" style={{ width: 80 }}>
+        <input className="cell-input mono" type="number" placeholder="100" value={row.stems_ordered}
+          onChange={e => set('stems_ordered', e.target.value)}
+          onKeyDown={e => onKeyDown(e, row._id, 'stems_ordered')} />
+      </div>
+
+      {/* St/Bunch */}
+      <div className="cell" style={{ width: 70 }}>
+        <input className="cell-input mono" type="number" placeholder="25" value={row.stems_per_bunch}
+          onChange={e => set('stems_per_bunch', e.target.value)}
+          onKeyDown={e => onKeyDown(e, row._id, 'stems_per_bunch')} />
+      </div>
+
+      {/* Price */}
+      <div className="cell" style={{ width: 82 }}>
+        <input className="cell-input mono" type="number" step="0.001" placeholder="0.45" value={row.price_ordered}
+          onChange={e => set('price_ordered', e.target.value)}
+          onKeyDown={e => onKeyDown(e, row._id, 'price_ordered')} />
+      </div>
+
+      {/* Total */}
+      <div className="cell" style={{ width: 88, background: 'var(--surface-2)' }}>
+        <span style={{ padding: '0 10px', fontSize: 12, fontFamily: 'var(--mono)', color: 'var(--brown-dark)', fontWeight: 500 }}>
+          {row.stems_ordered && row.price_ordered
+            ? `$${(Number(row.stems_ordered) * Number(row.price_ordered)).toFixed(2)}`
+            : '—'}
+        </span>
+      </div>
+
+      {/* Notes */}
+      <div className="cell" style={{ flex: 1, minWidth: 80 }}>
+        <input className="cell-input" placeholder="notes…" value={row.notes_buyer}
+          onChange={e => set('notes_buyer', e.target.value)}
+          onKeyDown={e => onKeyDown(e, row._id, 'notes_buyer')} />
+      </div>
+
+      {/* Status */}
+      <div className="cell" style={{ width: 44, justifyContent: 'center' }}>
+        <StatusDot status={row.status} onChange={v => set('status', v)} />
+      </div>
+
+      <button className="row-delete" onClick={() => onDelete(row._id)} title="Remove">
+        <i className="ti ti-x" aria-hidden="true" />
+      </button>
+    </div>
+  )
+}
+
+// ── Droppable farm block ─────────────────────────────────────────────────────
+function FarmBlock({ block, blockIndex, farms, products, onUpdate, onDelete, onAddFarm }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `farm_${block.farmId}`, data: { type: 'farm', farmId: block.farmId } })
+  const inputRefs = useRef({})
+
+  const totalStems = block.boxes.reduce((a, b) => a + b.rows.reduce((c, r) => c + (Number(r.stems_ordered) || 0), 0), 0)
+  const totalCost = block.boxes.reduce((a, b) => a + b.rows.reduce((c, r) => c + ((Number(r.stems_ordered) || 0) * (Number(r.price_ordered) || 0)), 0), 0)
+  const confirmedRows = block.boxes.reduce((a, b) => a + b.rows.filter(r => r.status === 'confirmed').length, 0)
+  const totalRows = block.boxes.reduce((a, b) => a + b.rows.length, 0)
+
+  const updateBox = (boxIdx, updates) => {
+    const boxes = block.boxes.map((b, i) => i === boxIdx ? { ...b, ...updates } : b)
+    onUpdate({ ...block, boxes })
+  }
+
+  const updateRow = (boxIdx, rowId, updatedRow) => {
+    const boxes = block.boxes.map((b, i) => {
+      if (i !== boxIdx) return b
+      return { ...b, rows: b.rows.map(r => r._id === rowId ? updatedRow : r) }
+    })
+    onUpdate({ ...block, boxes })
+  }
+
+  const deleteRow = (boxIdx, rowId) => {
+    const boxes = block.boxes.map((b, i) => {
+      if (i !== boxIdx) return b
+      const rows = b.rows.filter(r => r._id !== rowId)
+      return { ...b, rows: rows.length ? rows : [newRow(block.farmId, b.boxNr, 0)] }
+    }).filter(Boolean)
+    onUpdate({ ...block, boxes })
+  }
+
+  const addRow = (boxIdx) => {
+    const box = block.boxes[boxIdx]
+    const sortOrder = box.rows.length
+    const row = newRow(block.farmId, box.boxNr, sortOrder)
+    const boxes = block.boxes.map((b, i) => i === boxIdx ? { ...b, rows: [...b.rows, row] } : b)
+    onUpdate({ ...block, boxes })
+    // Focus first cell of new row after render
+    setTimeout(() => {
+      const el = inputRefs.current[row._id]
+      if (el) el.focus()
+    }, 50)
+  }
+
+  const addBox = () => {
+    const nextNr = Math.max(...block.boxes.map(b => b.boxNr), 0) + 1
+    onUpdate({ ...block, boxes: [...block.boxes, newBox(block.farmId, nextNr)] })
+  }
+
+  const deleteBox = (boxIdx) => {
+    if (block.boxes.length === 1) return // keep at least one
+    const boxes = block.boxes.filter((_, i) => i !== boxIdx)
+    onUpdate({ ...block, boxes })
+  }
+
+  const handleKeyDown = (e, rowId, field) => {
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault()
+      // find next input — simple flat list approach
+      const allInputs = document.querySelectorAll('.cell-input, .cell-select')
+      const arr = Array.from(allInputs)
+      const curr = e.target
+      const idx = arr.indexOf(curr)
+      if (idx >= 0 && idx < arr.length - 1) arr[idx + 1].focus()
+    }
+  }
+
+  const rowIds = block.boxes.flatMap(b => b.rows.map(r => r._id))
+
+  return (
+    <div ref={setNodeRef} className={`farm-block${isOver ? ' dragging-over' : ''}`}>
+      <div className="farm-header" onClick={() => onUpdate({ ...block, collapsed: !block.collapsed })}>
+        <i className="ti ti-grip-vertical drag-handle" aria-hidden="true" style={{ color: 'rgba(255,255,255,0.25)', fontSize: 16 }} />
+        <span className="farm-header-name">{block.farmName}</span>
+        <div className="farm-header-stats">
+          <span>{totalStems.toLocaleString()} stems</span>
+          <span>${totalCost.toFixed(2)}</span>
+          <span>{confirmedRows}/{totalRows} confirmed</span>
+        </div>
+        <button className="farm-collapse-btn" onClick={e => { e.stopPropagation(); onUpdate({ ...block, collapsed: !block.collapsed }) }}>
+          <i className={`ti ti-chevron-${block.collapsed ? 'right' : 'down'}`} aria-hidden="true" style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }} />
+        </button>
+        <button className="farm-collapse-btn" onClick={e => { e.stopPropagation(); onDelete(block.farmId) }} title="Remove farm">
+          <i className="ti ti-x" aria-hidden="true" style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }} />
+        </button>
+      </div>
+
+      {!block.collapsed && (
+        <>
+          {/* Column headers — shown once per farm */}
+          <div style={{ display: 'flex', alignItems: 'center', background: 'var(--surface-2)', borderBottom: '0.5px solid var(--border)', fontSize: 10, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            <span style={{ width: 34 }} />
+            <span style={{ width: 28 }}>#</span>
+            <span style={{ width: 42, padding: '6px 8px' }}>Type</span>
+            <span style={{ flex: 3, minWidth: 180, padding: '6px 10px' }}>Variety / Product</span>
+            <span style={{ width: 72, padding: '6px 10px' }}>Len cm</span>
+            <span style={{ width: 80, padding: '6px 10px' }}>Stems</span>
+            <span style={{ width: 70, padding: '6px 10px' }}>St/Bunch</span>
+            <span style={{ width: 82, padding: '6px 10px' }}>Price $</span>
+            <span style={{ width: 88, padding: '6px 10px' }}>Total $</span>
+            <span style={{ flex: 1, minWidth: 80, padding: '6px 10px' }}>Notes</span>
+            <span style={{ width: 44, padding: '6px 10px', textAlign: 'center' }}>St.</span>
+            <span style={{ width: 30 }} />
+          </div>
+
+          <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
+            {block.boxes.map((box, boxIdx) => (
+              <div key={`box_${block.farmId}_${box.boxNr}`} className="box-block">
+                <div className="box-header">
+                  <span className="box-drag-handle"><i className="ti ti-grip-horizontal" aria-hidden="true" /></span>
+                  <span className="box-number">Box {box.boxNr}</span>
+                  <input
+                    className="box-mark-input"
+                    placeholder="Boxmark"
+                    value={box.boxmark}
+                    onChange={e => updateBox(boxIdx, { boxmark: e.target.value })}
+                    onClick={e => e.stopPropagation()}
+                  />
+                  <select className="box-type-select" value={box.box_type}
+                    onChange={e => updateBox(boxIdx, { box_type: e.target.value })}
+                    onClick={e => e.stopPropagation()}>
+                    {BOX_TYPES.map(t => <option key={t}>{t}</option>)}
+                  </select>
+                  <span className="box-stems">
+                    {box.rows.reduce((a, r) => a + (Number(r.stems_ordered) || 0), 0).toLocaleString()} stems
+                  </span>
+                  <button className="box-delete-btn" onClick={() => deleteBox(boxIdx)} title="Remove box">
+                    <i className="ti ti-trash" aria-hidden="true" />
+                  </button>
+                </div>
+
+                <div className="product-rows">
+                  {box.rows.map((row, rowIdx) => (
+                    <ProductRow
+                      key={row._id}
+                      row={row}
+                      rowIndex={rowIdx}
+                      products={products}
+                      onUpdate={updated => updateRow(boxIdx, row._id, updated)}
+                      onDelete={rowId => deleteRow(boxIdx, rowId)}
+                      onKeyDown={handleKeyDown}
+                      inputRef={el => { if (el) inputRefs.current[row._id] = el }}
+                    />
+                  ))}
+                </div>
+
+                <button className="add-row-btn" onClick={() => addRow(boxIdx)}>
+                  <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 13 }} /> Add product line
+                </button>
+              </div>
+            ))}
+          </SortableContext>
+
+          <button className="add-box-btn" onClick={addBox}>
+            <i className="ti ti-package" aria-hidden="true" style={{ fontSize: 14 }} /> Add box
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ── Main PO Editor ───────────────────────────────────────────────────────────
+export default function POEditor({ shipmentId, farms, products }) {
+  const [blocks, setBlocks] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [showAddFarm, setShowAddFarm] = useState(false)
+  const [activeId, setActiveId] = useState(null)
+  const saveTimer = useRef(null)
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+
+  // Load existing POs from DB
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from('purchase_orders')
+        .select('*, farms(id,name,code), products(id,name,vbn_code)')
+        .eq('shipment_id', shipmentId)
+        .order('sort_order')
+
+      if (!data || data.length === 0) { setLoading(false); return }
+
+      // Group by farm then box_nr
+      const farmMap = {}
+      data.forEach(po => {
+        const fid = po.farm_id || 'open'
+        const fname = po.farms?.name || '— Open market'
+        const fcode = po.farms?.code || ''
+        if (!farmMap[fid]) farmMap[fid] = { farmId: fid, farmName: fname, farmCode: fcode, collapsed: false, boxes: {} }
+        const bn = po.box_nr || 1
+        if (!farmMap[fid].boxes[bn]) farmMap[fid].boxes[bn] = { boxNr: bn, boxmark: po.boxmark || '', box_type: po.box_type || 'HB', rows: [] }
+        farmMap[fid].boxes[bn].rows.push({
+          _id: po.id,
+          isNew: false,
+          farm_id: po.farm_id,
+          box_nr: po.box_nr,
+          boxmark: po.boxmark,
+          box_type: po.box_type,
+          product_id: po.product_id,
+          order_type: po.order_type || 'open_market',
+          status: po.status || 'pending',
+          length_cm: po.length_cm || '',
+          stems_ordered: po.stems_ordered || '',
+          stems_per_bunch: po.stems_per_bunch || 25,
+          price_ordered: po.price_ordered || '',
+          notes_buyer: po.notes_buyer || '',
+          sort_order: po.sort_order || 0,
+        })
+      })
+
+      const blockArr = Object.values(farmMap).map(f => ({
+        ...f,
+        boxes: Object.values(f.boxes)
+      }))
+      setBlocks(blockArr)
+      setLoading(false)
+    }
+    load()
+  }, [shipmentId])
+
+  // Auto-save with debounce
+  const autoSave = useCallback((newBlocks) => {
+    clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => save(newBlocks), 1500)
+  }, [])
+
+  const updateBlock = (idx, updated) => {
+    const nb = blocks.map((b, i) => i === idx ? updated : b)
+    setBlocks(nb)
+    autoSave(nb)
+  }
+
+  const deleteBlock = (farmId) => {
+    const nb = blocks.filter(b => b.farmId !== farmId)
+    setBlocks(nb)
+    autoSave(nb)
+  }
+
+  const addFarm = (farm) => {
+    const exists = blocks.find(b => b.farmId === farm.id)
+    if (exists) { setShowAddFarm(false); return }
+    const nb = [...blocks, newFarmBlock(farm)]
+    setBlocks(nb)
+    setShowAddFarm(false)
+    autoSave(nb)
+  }
+
+  // Save all to DB
+  const save = async (blocksToSave = blocks) => {
+    setSaving(true)
+    // Collect all rows
+    const rows = []
+    blocksToSave.forEach(block => {
+      block.boxes.forEach(box => {
+        box.rows.forEach((row, rowIdx) => {
+          rows.push({
+            id: row.isNew ? undefined : row._id,
+            shipment_id: shipmentId,
+            farm_id: block.farmId === 'open' ? null : block.farmId,
+            product_id: row.product_id || null,
+            order_type: row.order_type,
+            status: row.status,
+            box_nr: box.boxNr,
+            boxmark: box.boxmark || null,
+            box_type: box.box_type,
+            length_cm: row.length_cm ? parseInt(row.length_cm) : null,
+            stems_ordered: row.stems_ordered ? parseInt(row.stems_ordered) : null,
+            stems_per_bunch: row.stems_per_bunch ? parseInt(row.stems_per_bunch) : 25,
+            price_ordered: row.price_ordered ? parseFloat(row.price_ordered) : null,
+            notes_buyer: row.notes_buyer || null,
+            sort_order: rowIdx,
+          })
+        })
+      })
+    })
+
+    // Upsert all rows
+    const toInsert = rows.filter(r => !r.id)
+    const toUpdate = rows.filter(r => r.id)
+
+    if (toInsert.length) await supabase.from('purchase_orders').insert(toInsert)
+    for (const r of toUpdate) {
+      await supabase.from('purchase_orders').update(r).eq('id', r.id)
+    }
+
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  // DnD handlers
+  const handleDragEnd = (event) => {
+    const { active, over } = event
+    setActiveId(null)
+    if (!over || active.id === over.id) return
+
+    const activeData = active.data.current
+    const overData = over.data.current
+
+    // Row reorder within same box
+    if (activeData?.type === 'row') {
+      const newBlocks = blocks.map(block => ({
+        ...block,
+        boxes: block.boxes.map(box => {
+          const ids = box.rows.map(r => r._id)
+          if (!ids.includes(active.id)) return box
+          const oldIdx = ids.indexOf(active.id)
+          const newIdx = ids.indexOf(over.id)
+          if (newIdx === -1) return box
+          return { ...box, rows: arrayMove(box.rows, oldIdx, newIdx) }
+        })
+      }))
+      setBlocks(newBlocks)
+      autoSave(newBlocks)
+    }
+  }
+
+  // Totals
+  const allRows = blocks.flatMap(b => b.boxes.flatMap(box => box.rows))
+  const totalStemsOrdered = allRows.reduce((a, r) => a + (Number(r.stems_ordered) || 0), 0)
+  const totalCostOrdered = allRows.reduce((a, r) => a + ((Number(r.stems_ordered) || 0) * (Number(r.price_ordered) || 0)), 0)
+  const confirmed = allRows.filter(r => r.status === 'confirmed')
+  const totalStemsConfirmed = confirmed.reduce((a, r) => a + (Number(r.stems_ordered) || 0), 0)
+  const totalCostConfirmed = confirmed.reduce((a, r) => a + ((Number(r.stems_ordered) || 0) * (Number(r.price_ordered) || 0)), 0)
+
+  if (loading) return <div className="empty"><i className="ti ti-loader" /><div className="empty-title">Loading purchase orders…</div></div>
+
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter}
+      onDragStart={e => setActiveId(e.active.id)}
+      onDragEnd={handleDragEnd}>
+
+      <div className="po-editor">
+        <div className="po-editor-toolbar">
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-1)', flex: 1 }}>
+            Purchase Order List
+            <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-3)', fontWeight: 400 }}>
+              {blocks.length} farms · {allRows.length} lines
+            </span>
+          </span>
+          {saved && <span style={{ fontSize: 12, color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 5 }}><i className="ti ti-check" />Saved</span>}
+          {saving && <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Saving…</span>}
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowAddFarm(true)}>
+            <i className="ti ti-building-factory" aria-hidden="true" /> Add farm
+          </button>
+          <button className="btn btn-brown btn-sm" onClick={() => save()}>
+            <i className="ti ti-device-floppy" aria-hidden="true" /> Save now
+          </button>
+        </div>
+
+        {blocks.length === 0 ? (
+          <div className="empty">
+            <i className="ti ti-list-check" />
+            <div className="empty-title">Purchase Order List is empty</div>
+            <div className="empty-sub">Add a farm to start building the order list for this shipment</div>
+            <button className="btn btn-brown" style={{ marginTop: 12 }} onClick={() => setShowAddFarm(true)}>
+              <i className="ti ti-building-factory" aria-hidden="true" /> Add first farm
+            </button>
+          </div>
+        ) : (
+          <>
+            {blocks.map((block, idx) => (
+              <FarmBlock
+                key={block.farmId}
+                block={block}
+                blockIndex={idx}
+                farms={farms}
+                products={products}
+                onUpdate={updated => updateBlock(idx, updated)}
+                onDelete={farmId => deleteBlock(farmId)}
+              />
+            ))}
+            <button className="add-farm-btn" onClick={() => setShowAddFarm(true)}>
+              <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 15 }} /> Add another farm
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Totals */}
+      {blocks.length > 0 && (
+        <div className="totals-bar">
+          <div className="total-item"><div className="total-label">Stems ordered</div><div className="total-val">{totalStemsOrdered.toLocaleString()}</div></div>
+          <div className="total-item"><div className="total-label">Stems confirmed</div><div className="total-val hi">{totalStemsConfirmed.toLocaleString()}</div></div>
+          <div className="total-item"><div className="total-label">Cost ordered</div><div className="total-val">${totalCostOrdered.toFixed(2)}</div></div>
+          <div className="total-item"><div className="total-label">Cost confirmed</div><div className="total-val hi">${totalCostConfirmed.toFixed(2)}</div></div>
+          <div className="total-item"><div className="total-label">Farms</div><div className="total-val">{blocks.length}</div></div>
+          <div className="total-item"><div className="total-label">Order lines</div><div className="total-val">{allRows.length}</div></div>
+        </div>
+      )}
+
+      {/* Add Farm Modal */}
+      {showAddFarm && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAddFarm(false)}>
+          <div className="modal" style={{ maxWidth: 480 }}>
+            <div className="modal-header">
+              <i className="ti ti-building-factory" style={{ fontSize: 17, color: 'var(--green)' }} aria-hidden="true" />
+              <div className="modal-title">Add farm to this shipment</div>
+              <button className="btn-icon" onClick={() => setShowAddFarm(false)}><i className="ti ti-x" /></button>
+            </div>
+            <div className="modal-body" style={{ gap: 6, maxHeight: 400, overflowY: 'auto' }}>
+              {farms.filter(f => !blocks.find(b => b.farmId === f.id)).map(farm => (
+                <div key={farm.id}
+                  onClick={() => addFarm(farm)}
+                  style={{ padding: '11px 14px', border: '0.5px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.1s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--green-pale)'}
+                  onMouseLeave={e => e.currentTarget.style.background = ''}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{farm.name}</div>
+                    {farm.code && <div style={{ fontSize: 11.5, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>{farm.code}</div>}
+                  </div>
+                  <span style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{farm.country}</span>
+                </div>
+              ))}
+              {farms.filter(f => !blocks.find(b => b.farmId === f.id)).length === 0 && (
+                <div className="empty" style={{ padding: 24 }}>
+                  <div className="empty-sub">All farms already added to this shipment</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </DndContext>
+  )
+}
