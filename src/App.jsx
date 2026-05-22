@@ -847,7 +847,7 @@ export default function App() {
   }
 
   if (loading) return (
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'#1e2b1c',color:'#996633',fontSize:20,letterSpacing:'0.24em'}}>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'var(--green-deep)',color:'#996633',fontSize:20,letterSpacing:'0.24em'}}>
       ORIGINS
     </div>
   )

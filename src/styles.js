@@ -3,11 +3,11 @@ export const CSS = `
 
   :root {
     --green:        #536350;
-    --green-dark:   #3d4a39;
-    --green-deep:   #1e2b1c;
+    --green-dark:   #3d4d3a;
+    --green-deep:   #2c3d29;
     --green-mid:    #647a61;
-    --green-light:  #EAF0EF;
-    --green-pale:   #F2F6F5;
+    --green-light:  #eaf0e9;
+    --green-pale:   #f2f6f1;
     --brown:        #996633;
     --brown-light:  #b07a3d;
     --brown-pale:   #f5ede0;
