@@ -2,16 +2,16 @@ export const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
 
   :root {
-    --green:        #49625D;
-    --green-dark:   #344845;
-    --green-deep:   #243330;
-    --green-mid:    #5A7570;
+    --green:        #536350;
+    --green-dark:   #3d4a39;
+    --green-deep:   #1e2b1c;
+    --green-mid:    #647a61;
     --green-light:  #EAF0EF;
     --green-pale:   #F2F6F5;
-    --brown:        #BA9870;
-    --brown-light:  #CDB088;
-    --brown-pale:   #F7F1E8;
-    --brown-dark:   #8A6E4E;
+    --brown:        #996633;
+    --brown-light:  #b07a3d;
+    --brown-pale:   #f5ede0;
+    --brown-dark:   #7a5228;
     --surface:      #FAFAF8;
     --surface-2:    #F4F3EF;
     --surface-3:    #ECEAE4;
