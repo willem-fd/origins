@@ -68,10 +68,12 @@ function Sidebar({ page, setPage, user, pendingCount, onSignOut }) {
   )
   return (
     <div className="sidebar">
-      <div className="sidebar-logo">
-        <svg width="110" height="22" viewBox="0 0 110 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <text x="0" y="17" fontFamily="'DM Sans', sans-serif" fontSize="16" fontWeight="400" letterSpacing="5" fill="#BA9870">ORIGINS</text>
-        </svg>
+      <div
+        className="sidebar-logo"
+        onClick={() => setPage('dashboard')}
+        style={{cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 20px'}}
+      >
+        <img src="/origins-logo.svg" alt="Origins" style={{width:'130px', height:'auto', display:'block'}} />
       </div>
       <div className="sidebar-nav">
         <div className="nav-section">

@@ -38,10 +38,10 @@ export const CSS = `
     display: flex; flex-direction: column;
   }
   .sidebar-logo {
-    padding: 22px 20px 20px;
     border-bottom: 0.5px solid rgba(255,255,255,0.07);
+    transition: opacity 0.15s;
   }
-  .logo-word { font-size: 19px; font-weight: 400; letter-spacing: 0.22em; color: var(--brown); }
+  .sidebar-logo:hover { opacity: 0.8; }
   .sidebar-nav { flex: 1; padding: 14px 0; overflow-y: auto; }
   .nav-section { margin-bottom: 18px; }
   .nav-label {
