@@ -34,53 +34,59 @@ export const CSS = `
 
   /* SIDEBAR */
   .sidebar {
-    width: 228px; min-width: 228px; background: var(--green-deep);
+    width: 228px; min-width: 228px; background: #1f2e1d;
     display: flex; flex-direction: column;
   }
   .sidebar-logo {
-    border-bottom: 0.5px solid rgba(255,255,255,0.07);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
     transition: opacity 0.15s;
   }
   .sidebar-logo:hover { opacity: 0.8; }
   .sidebar-nav { flex: 1; padding: 14px 0; overflow-y: auto; }
-  .nav-section { margin-bottom: 18px; }
+  .nav-section { margin-bottom: 20px; }
   .nav-label {
-    font-size: 9.5px; font-weight: 600; letter-spacing: 0.13em;
-    color: rgba(255,255,255,0.18); text-transform: uppercase;
-    padding: 0 16px 5px;
+    font-size: 9.5px; font-weight: 700; letter-spacing: 0.14em;
+    color: rgba(255,255,255,0.28); text-transform: uppercase;
+    padding: 0 16px 6px;
   }
   .nav-item {
-    display: flex; align-items: center; gap: 9px;
-    padding: 8px 16px; font-size: 13px; color: rgba(255,255,255,0.42);
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 16px; font-size: 13.5px; font-weight: 400;
+    color: rgba(255,255,255,0.52);
     cursor: pointer; position: relative; transition: all 0.12s;
   }
-  .nav-item:hover { color: rgba(255,255,255,0.72); background: rgba(255,255,255,0.04); }
-  .nav-item.active { color: var(--brown-light); background: rgba(186,152,112,0.12); }
-  .nav-item.active::before {
-    content: ''; position: absolute; left: 0; top: 5px; bottom: 5px;
-    width: 3px; background: var(--brown); border-radius: 0 2px 2px 0;
+  .nav-item:hover { color: rgba(255,255,255,0.88); background: rgba(255,255,255,0.06); }
+  .nav-item.active {
+    color: #e8b96a;
+    background: rgba(153,102,51,0.18);
+    font-weight: 500;
   }
-  .nav-item i { font-size: 16px; flex-shrink: 0; }
+  .nav-item.active::before {
+    content: ''; position: absolute; left: 0; top: 6px; bottom: 6px;
+    width: 3px; background: #996633; border-radius: 0 3px 3px 0;
+  }
+  .nav-item i { font-size: 16px; flex-shrink: 0; opacity: 0.85; }
+  .nav-item.active i { opacity: 1; }
   .nav-badge {
-    margin-left: auto; font-size: 10.5px; font-weight: 500;
-    background: rgba(186,152,112,0.2); color: var(--brown-light);
+    margin-left: auto; font-size: 10.5px; font-weight: 600;
+    background: rgba(153,102,51,0.35); color: #e8b96a;
     padding: 1px 7px; border-radius: 10px;
   }
-  .sidebar-footer { padding: 14px 16px; border-top: 0.5px solid rgba(255,255,255,0.07); }
+  .sidebar-footer { padding: 14px 16px; border-top: 1px solid rgba(255,255,255,0.06); }
   .user-row {
     display: flex; align-items: center; gap: 10px;
     padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer;
     transition: background 0.12s;
   }
-  .user-row:hover { background: rgba(255,255,255,0.05); }
+  .user-row:hover { background: rgba(255,255,255,0.07); }
   .avatar {
     width: 30px; height: 30px; border-radius: 50%;
-    background: var(--brown-dark); color: #fff;
+    background: #7a5228; color: #f0d9b5;
     display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 600; flex-shrink: 0;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
   }
-  .user-name { font-size: 12.5px; color: rgba(255,255,255,0.62); font-weight: 500; }
-  .user-role { font-size: 10.5px; color: rgba(255,255,255,0.25); }
+  .user-name { font-size: 12.5px; color: rgba(255,255,255,0.75); font-weight: 500; }
+  .user-role { font-size: 10.5px; color: rgba(255,255,255,0.30); margin-top: 1px; }
 
   /* MAIN */
   .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
@@ -236,7 +242,7 @@ export const CSS = `
   .empty-sub { font-size: 13px; }
 
   /* LOGIN */
-  .login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--green-deep); padding: 20px; }
+  .login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #1f2e1d; padding: 20px; }
   .login-card {
     background: var(--surface); border-radius: 16px; padding: 44px 40px;
     width: 100%; max-width: 400px; box-shadow: 0 24px 80px rgba(0,0,0,0.3);
