@@ -68,7 +68,11 @@ function Sidebar({ page, setPage, user, pendingCount, onSignOut }) {
   )
   return (
     <div className="sidebar">
-      <div className="sidebar-logo"><div className="logo-word">ORIGINS</div></div>
+      <div className="sidebar-logo">
+        <svg width="110" height="22" viewBox="0 0 110 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <text x="0" y="17" fontFamily="'DM Sans', sans-serif" fontSize="16" fontWeight="400" letterSpacing="5" fill="#BA9870">ORIGINS</text>
+        </svg>
+      </div>
       <div className="sidebar-nav">
         <div className="nav-section">
           <div className="nav-label">Overview</div>
@@ -450,7 +454,7 @@ function GrowersPage({ growers, setGrowers }) {
 
   const validate = () => {
     const e = {}
-    if (!f.name.trim()) e.name = 'Farm name is required'
+    if (!f.name.trim()) e.name = 'Grower name is required'
     if (!validateEmail(f.contact_email)) e.contact_email = 'Invalid email format'
     if (!validatePhone(f.contact_phone)) e.contact_phone = 'Invalid phone number'
     setErrors(e)
@@ -479,7 +483,7 @@ function GrowersPage({ growers, setGrowers }) {
         </div>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Farm name</th><th>Code</th><th>Country</th><th>City</th><th>Contact</th><th>Email</th><th>Phone</th></tr></thead>
+            <thead><tr><th>Grower name</th><th>Code</th><th>Country</th><th>City</th><th>Contact</th><th>Email</th><th>Phone</th></tr></thead>
             <tbody>
               {filtered.map(g=>(
                 <tr key={g.id}>
@@ -509,7 +513,7 @@ function GrowersPage({ growers, setGrowers }) {
             <div className="modal-body">
               <div className="form-row">
                 <div className="form-group" style={{flex:2}}>
-                  <label className="form-label">Farm name *</label>
+                  <label className="form-label">Grower name *</label>
                   <input className={`form-input${errors.name?' error':''}`} value={f.name} onChange={e=>set('name',e.target.value)} placeholder="e.g. Joygardens" />
                   {errors.name && <div className="form-error">{errors.name}</div>}
                 </div>
@@ -535,7 +539,7 @@ function GrowersPage({ growers, setGrowers }) {
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Email</label>
-                  <input className={`form-input${errors.contact_email?' error':''}`} type="email" value={f.contact_email} onChange={e=>set('contact_email',e.target.value)} placeholder="farm@example.com" />
+                  <input className={`form-input${errors.contact_email?' error':''}`} type="email" value={f.contact_email} onChange={e=>set('contact_email',e.target.value)} placeholder="grower@example.com" />
                   {errors.contact_email && <div className="form-error">{errors.contact_email}</div>}
                 </div>
                 <div className="form-group">

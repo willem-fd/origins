@@ -532,7 +532,7 @@ export default function POEditor({ shipmentId, farms, products }) {
           {saved && <span style={{ fontSize: 12, color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 5 }}><i className="ti ti-check" />Saved</span>}
           {saving && <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Saving…</span>}
           <button className="btn btn-ghost btn-sm" onClick={() => setShowAddFarm(true)}>
-            <i className="ti ti-building-factory" aria-hidden="true" /> Add farm
+            <i className="ti ti-building-factory" aria-hidden="true" /> Add grower
           </button>
           <button className="btn btn-brown btn-sm" onClick={() => save()}>
             <i className="ti ti-device-floppy" aria-hidden="true" /> Save now
@@ -545,7 +545,7 @@ export default function POEditor({ shipmentId, farms, products }) {
             <div className="empty-title">Purchase Order List is empty</div>
             <div className="empty-sub">Add a farm to start building the order list for this shipment</div>
             <button className="btn btn-brown" style={{ marginTop: 12 }} onClick={() => setShowAddFarm(true)}>
-              <i className="ti ti-building-factory" aria-hidden="true" /> Add first farm
+              <i className="ti ti-building-factory" aria-hidden="true" /> Add first grower
             </button>
           </div>
         ) : (
@@ -586,7 +586,7 @@ export default function POEditor({ shipmentId, farms, products }) {
           <div className="modal" style={{ maxWidth: 480 }}>
             <div className="modal-header">
               <i className="ti ti-building-factory" style={{ fontSize: 17, color: 'var(--green)' }} aria-hidden="true" />
-              <div className="modal-title">Add farm to this shipment</div>
+              <div className="modal-title">Add grower to this shipment</div>
               <button className="btn-icon" onClick={() => setShowAddFarm(false)}><i className="ti ti-x" /></button>
             </div>
             <div className="modal-body" style={{ gap: 6, maxHeight: 400, overflowY: 'auto' }}>
