@@ -526,7 +526,7 @@ export default function POEditor({ shipmentId, farms, products }) {
           <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-1)', flex: 1 }}>
             Purchase Order List
             <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-3)', fontWeight: 400 }}>
-              {blocks.length} farms · {allRows.length} lines
+              {blocks.length} growers · {allRows.length} lines
             </span>
           </span>
           {saved && <span style={{ fontSize: 12, color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 5 }}><i className="ti ti-check" />Saved</span>}
@@ -543,7 +543,7 @@ export default function POEditor({ shipmentId, farms, products }) {
           <div className="empty">
             <i className="ti ti-list-check" />
             <div className="empty-title">Purchase Order List is empty</div>
-            <div className="empty-sub">Add a farm to start building the order list for this shipment</div>
+            <div className="empty-sub">Add a grower to start building the order list for this shipment</div>
             <button className="btn btn-brown" style={{ marginTop: 12 }} onClick={() => setShowAddFarm(true)}>
               <i className="ti ti-building-factory" aria-hidden="true" /> Add first grower
             </button>
@@ -562,7 +562,7 @@ export default function POEditor({ shipmentId, farms, products }) {
               />
             ))}
             <button className="add-farm-btn" onClick={() => setShowAddFarm(true)}>
-              <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 15 }} /> Add another farm
+              <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 15 }} /> Add another grower
             </button>
           </>
         )}

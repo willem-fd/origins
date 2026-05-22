@@ -276,7 +276,7 @@ export const CSS = `
   .meta-value.mono { font-family: var(--mono); font-size: 13px; }
 
   /* PO EDITOR */
-  .po-editor { display: flex; flex-direction: column; border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+  .po-editor { display: flex; flex-direction: column; border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); width: 100%; }
   .po-editor-toolbar { display: flex; align-items: center; padding: 12px 16px; border-bottom: 0.5px solid var(--border); gap: 10px; background: var(--surface); }
   .farm-block { border-bottom: 0.5px solid var(--border); }
   .farm-block:last-child { border-bottom: none; }
