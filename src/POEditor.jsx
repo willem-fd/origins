@@ -720,8 +720,6 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
         )}
       </div>
 
-      </div>
-
       {/* Totals — outside the editor card so never clipped */}
       {blocks.length > 0 && (
         <div className="totals-bar" style={{ marginTop: 12 }}>
