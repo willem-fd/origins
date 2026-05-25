@@ -193,7 +193,13 @@ function ShipmentForm({ initial, logistics, onClose, onSave, title }) {
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Drop date *</label>
-              <input className={`form-input${err && !f.drop_date ? ' error' : ''}`} type="date" value={f.drop_date} onChange={e => set('drop_date', e.target.value)} />
+              <input
+                className={`form-input${err && !f.drop_date ? ' error' : ''}`}
+                type="date"
+                value={f.drop_date}
+                min={initial?.id ? undefined : new Date().toISOString().split('T')[0]}
+                onChange={e => set('drop_date', e.target.value)}
+              />
             </div>
             <div className="form-group">
               <label className="form-label">Departure date</label>
@@ -253,6 +259,16 @@ function ShipmentForm({ initial, logistics, onClose, onSave, title }) {
           </div>
         </div>
         <div className="modal-footer">
+          {initial?.id && (
+            <button className="btn btn-danger btn-sm" style={{ marginRight: 'auto' }} onClick={async () => {
+              if (!window.confirm(`⚠️ Permanently delete this shipment and all its PO lines? This cannot be undone.`)) return
+              await supabase.from('purchase_orders').delete().eq('shipment_id', initial.id)
+              await supabase.from('shipments').delete().eq('id', initial.id)
+              onSave(null) // signal deletion
+            }}>
+              <i className="ti ti-trash" /> Delete shipment permanently
+            </button>
+          )}
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
             <i className="ti ti-check" aria-hidden="true" />{saving ? 'Saving…' : initial?.id ? 'Save changes' : 'Create shipment'}
@@ -343,6 +359,7 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
   }
 
   const handleEdit = updated => {
+    if (updated === null) { onDelete(s.id); return } // hard delete
     setS(updated); onUpdate(updated); setShowEdit(false)
   }
 
@@ -390,7 +407,16 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
         <button className="btn btn-ghost btn-sm" onClick={() => setShowEdit(true)}>
           <i className="ti ti-edit" /> Edit shipment
         </button>
-        {actionButtons()}
+        {s.status === 'draft' && (
+          <button className="btn btn-danger btn-sm" onClick={handleDelete}>
+            <i className="ti ti-trash" /> Delete draft
+          </button>
+        )}
+        {s.status === 'arrived' && (
+          <button className="btn btn-brown btn-sm" onClick={() => setConfirmReceived(true)}>
+            <i className="ti ti-check" /> Mark as received
+          </button>
+        )}
         <StatusBadge status={s.status} />
       </div>
 
@@ -408,21 +434,31 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
       {/* Meta grid */}
       <div className="meta-grid">
         {[
-          { label: 'Drop date',          value: s.drop_date || '—',              mono: true },
-          { label: 'Departure',          value: s.departure_date || '—',         mono: true },
-          { label: 'Est. arrival',       value: s.arrival_date || '—',           mono: true },
-          { label: 'AWB',                value: s.mawb || '—',                   mono: true },
-          { label: 'HAWB',               value: s.hawb || '—',                   mono: true },
-          { label: 'Cargo agent',        value: cargoAgent?.name || '—' },
-          { label: 'Airline',            value: airline?.name || '—' },
-          { label: 'Customs agent',      value: customsAgent?.name || '—' },
-          { label: 'Chargeable weight',  value: s.chargeable_weight ? `${s.chargeable_weight} kg` : '—', mono: true },
+          { label: 'Drop date',         value: s.drop_date || '—',             mono: true },
+          { label: 'Departure',         value: s.departure_date || '—',        mono: true },
+          { label: 'Est. arrival',      value: s.arrival_date || '—',          mono: true },
+          { label: 'AWB',               value: s.mawb || '—',                  mono: true },
+          { label: 'HAWB',              value: s.hawb || '—',                  mono: true },
+          { label: 'Cargo agent',       value: cargoAgent?.name || '—' },
+          { label: 'Airline',           value: airline?.name || '—' },
+          { label: 'Customs agent',     value: customsAgent?.name || '—' },
+          { label: 'Chargeable weight', value: s.chargeable_weight ? `${s.chargeable_weight} kg` : '—', mono: true },
         ].map(m => (
           <div className="meta-item" key={m.label}>
             <div className="meta-label">{m.label}</div>
             <div className={`meta-value${m.mono ? ' mono' : ''}`}>{m.value}</div>
           </div>
         ))}
+        {/* Notes — full width */}
+        <div className="meta-item" style={{ gridColumn: '1 / -1' }}>
+          <div className="meta-label">Notes</div>
+          <textarea
+            className="meta-notes-input"
+            defaultValue={s.notes || ''}
+            placeholder="Add shipment notes…"
+            onBlur={e => updateField('notes', e.target.value || null)}
+          />
+        </div>
       </div>
 
       {/* Tabs */}
@@ -435,6 +471,13 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
 
         {tab === 'orders' && (
           <div style={{ padding: 16 }}>
+            {s.status === 'active' && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setConfirmClose(true)}>
+                  <i className="ti ti-lock" /> Close purchasing
+                </button>
+              </div>
+            )}
             <POEditor
               shipmentId={s.id}
               farms={growers}

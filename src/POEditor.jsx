@@ -441,7 +441,6 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
   // Save all to DB
   const save = async (blocksToSave = blocks) => {
     setSaving(true)
-    // Collect all rows
     const rows = []
     blocksToSave.forEach(block => {
       block.boxes.forEach(box => {
@@ -467,13 +466,46 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
       })
     })
 
-    // Upsert all rows
     const toInsert = rows.filter(r => !r.id)
     const toUpdate = rows.filter(r => r.id)
 
-    if (toInsert.length) await supabase.from('purchase_orders').insert(toInsert)
+    // Insert new rows and get back their IDs
+    let insertedRows = []
+    if (toInsert.length) {
+      const { data } = await supabase.from('purchase_orders').insert(toInsert).select()
+      if (data) insertedRows = data
+    }
     for (const r of toUpdate) {
-      await supabase.from('purchase_orders').update(r).eq('id', r.id)
+      const { id, ...rest } = r
+      await supabase.from('purchase_orders').update(rest).eq('id', id)
+    }
+
+    // Delete rows that exist in DB but not in current blocks
+    const existingIds = rows.filter(r => r.id).map(r => r.id)
+    const { data: dbRows } = await supabase.from('purchase_orders').select('id').eq('shipment_id', shipmentId)
+    if (dbRows) {
+      const toDelete = dbRows.filter(r => !existingIds.includes(r.id)).map(r => r.id)
+      if (toDelete.length) await supabase.from('purchase_orders').delete().in('id', toDelete)
+    }
+
+    // Update blocks to clear isNew flags with real IDs
+    if (insertedRows.length > 0) {
+      let insertIdx = 0
+      const updatedBlocks = blocksToSave.map(block => ({
+        ...block,
+        boxes: block.boxes.map(box => ({
+          ...box,
+          rows: box.rows.map(row => {
+            if (row.isNew && insertedRows[insertIdx]) {
+              const newId = insertedRows[insertIdx].id
+              insertIdx++
+              return { ...row, isNew: false, _id: newId }
+            }
+            return row
+          })
+        }))
+      }))
+      setBlocks(updatedBlocks)
     }
 
     setSaving(false)
@@ -535,9 +567,6 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
           {saving && <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Saving…</span>}
           <button className="btn btn-ghost btn-sm" onClick={() => setShowAddFarm(true)}>
             <i className="ti ti-building-factory" aria-hidden="true" /> Add grower
-          </button>
-          <button className="btn btn-brown btn-sm" onClick={() => save()}>
-            <i className="ti ti-device-floppy" aria-hidden="true" /> Save now
           </button>
         </div>
 

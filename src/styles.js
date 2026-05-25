@@ -192,7 +192,13 @@ export const CSS = `
     color: var(--text-1); background: var(--surface); outline: none;
     resize: vertical; min-height: 72px; width: 100%;
   }
-  .form-section-label { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; padding-bottom: 2px; border-bottom: 0.5px solid var(--border); margin-bottom: 2px; }
+  .meta-notes-input {
+    width: 100%; border: none; background: transparent; outline: none;
+    font-family: var(--font); font-size: 13px; color: var(--text-1);
+    resize: none; min-height: 36px; line-height: 1.5; padding: 0;
+  }
+  .meta-notes-input::placeholder { color: var(--text-3); }
+  .meta-notes-input:focus { color: var(--text-1); }
 
   /* MODAL */
   .modal-overlay {
