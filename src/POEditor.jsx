@@ -268,6 +268,28 @@ function ProductRow({ row, rowIndex, products, onUpdate, onDelete, onKeyDown, in
 
 // ── Droppable farm block ─────────────────────────────────────────────────────
 function FarmBlock({ block, blockIndex, farms, products, onUpdate, onDelete, onAddFarm }) {
+  const [growerProducts, setGrowerProducts] = useState(null) // null = loading, [] = none set
+
+  // Load this grower's product catalogue
+  useEffect(() => {
+    if (!block.farmId || block.farmId === 'open') { setGrowerProducts(null); return }
+    const load = async () => {
+      const { data } = await supabase
+        .from('grower_products')
+        .select('product_id')
+        .eq('grower_id', block.farmId)
+      if (data && data.length > 0) {
+        const ids = new Set(data.map(gp => gp.product_id))
+        setGrowerProducts(products.filter(p => ids.has(p.id)))
+      } else {
+        setGrowerProducts([]) // grower has no catalogue set up
+      }
+    }
+    load()
+  }, [block.farmId])
+
+  // Use grower's catalogue if it has products, otherwise fall back to full catalogue
+  const availableProducts = growerProducts && growerProducts.length > 0 ? growerProducts : products
   const { setNodeRef, isOver } = useDroppable({ id: `farm_${block.farmId}`, data: { type: 'farm', farmId: block.farmId } })
   const inputRefs = useRef({})
 
@@ -341,6 +363,11 @@ function FarmBlock({ block, blockIndex, farms, products, onUpdate, onDelete, onA
       <div className="farm-header" onClick={() => onUpdate({ ...block, collapsed: !block.collapsed })}>
         <i className="ti ti-grip-vertical drag-handle" aria-hidden="true" style={{ color: 'rgba(255,255,255,0.25)', fontSize: 16 }} />
         <span className="farm-header-name">{block.farmName}</span>
+        {growerProducts && growerProducts.length > 0 && (
+          <span style={{ fontSize: 10, background: 'rgba(201,169,110,0.25)', color: '#C9A96E', padding: '2px 7px', borderRadius: 10, fontWeight: 600 }}>
+            {growerProducts.length} varieties
+          </span>
+        )}
         <div className="farm-header-stats">
           <span>{totalStems.toLocaleString()} stems</span>
           <span>${totalCost.toFixed(2)}</span>
@@ -404,7 +431,7 @@ function FarmBlock({ block, blockIndex, farms, products, onUpdate, onDelete, onA
                       key={row._id}
                       row={row}
                       rowIndex={rowIdx}
-                      products={products}
+                      products={availableProducts}
                       onUpdate={updated => updateRow(boxIdx, row._id, updated)}
                       onDelete={rowId => deleteRow(boxIdx, rowId)}
                       onKeyDown={handleKeyDown}
@@ -446,7 +473,7 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
     const load = async () => {
       const { data } = await supabase
         .from('purchase_orders')
-        .select('*, farms(id,name,code), products(id,name,vbn_code)')
+        .select('*, growers(id,name,code), products(id,name,vbn_code)')
         .eq('shipment_id', shipmentId)
         .order('sort_order')
 
@@ -456,8 +483,8 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
       const farmMap = {}
       data.forEach(po => {
         const fid = po.farm_id || 'open'
-        const fname = po.farms?.name || '— Open market'
-        const fcode = po.farms?.code || ''
+        const fname = po.growers?.name || '— Open market'
+        const fcode = po.growers?.code || ''
         if (!farmMap[fid]) farmMap[fid] = { farmId: fid, farmName: fname, farmCode: fcode, collapsed: false, boxes: {} }
         const bn = po.box_nr || 1
         if (!farmMap[fid].boxes[bn]) farmMap[fid].boxes[bn] = { boxNr: bn, boxmark: po.boxmark || '', box_type: po.box_type || 'HB', rows: [] }
@@ -731,7 +758,7 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
               ))}
               {farms.filter(f => !blocks.find(b => b.farmId === f.id)).length === 0 && (
                 <div className="empty" style={{ padding: 24 }}>
-                  <div className="empty-sub">All farms already added to this shipment</div>
+                  <div className="empty-sub">All growers already added to this shipment</div>
                 </div>
               )}
             </div>

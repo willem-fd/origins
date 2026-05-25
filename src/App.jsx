@@ -687,9 +687,186 @@ function ShipmentsPage({ shipments, logistics, onSelect, onNew }) {
   )
 }
 
+// ── Grower Detail with Product Catalogue ─────────────────────────────────────
+function GrowerDetail({ grower, products, onBack, onUpdate }) {
+  const [tab, setTab] = useState('info')
+  const [growerProducts, setGrowerProducts] = useState([])
+  const [loadingProducts, setLoadingProducts] = useState(true)
+  const [search, setSearch] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [addSearch, setAddSearch] = useState('')
+  const [addResults, setAddResults] = useState([])
+
+  // Load grower's product catalogue
+  useEffect(() => {
+    const load = async () => {
+      setLoadingProducts(true)
+      const { data } = await supabase
+        .from('grower_products')
+        .select('*, products(id, name, vbn_code, country, bkh)')
+        .eq('grower_id', grower.id)
+        .order('created_at')
+      setGrowerProducts(data || [])
+      setLoadingProducts(false)
+    }
+    load()
+  }, [grower.id])
+
+  // Search products to add
+  useEffect(() => {
+    if (addSearch.length < 2) { setAddResults([]); return }
+    const q = addSearch.toLowerCase()
+    const existing = new Set(growerProducts.map(gp => gp.product_id))
+    const results = products
+      .filter(p => !existing.has(p.id) &&
+        ((p.name || '').toLowerCase().includes(q) || (p.vbn_code || '').includes(q)))
+      .slice(0, 30)
+    setAddResults(results)
+  }, [addSearch, growerProducts, products])
+
+  const addProduct = async (product) => {
+    const { data, error } = await supabase
+      .from('grower_products')
+      .insert([{ grower_id: grower.id, product_id: product.id }])
+      .select('*, products(id, name, vbn_code, country, bkh)')
+      .single()
+    if (!error && data) {
+      setGrowerProducts(prev => [...prev, data])
+      setAddSearch('')
+      setAddResults([])
+    }
+  }
+
+  const removeProduct = async (gpId) => {
+    await supabase.from('grower_products').delete().eq('id', gpId)
+    setGrowerProducts(prev => prev.filter(gp => gp.id !== gpId))
+  }
+
+  const filteredCatalogue = growerProducts.filter(gp =>
+    !search || (gp.products?.name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (gp.products?.vbn_code || '').includes(search)
+  )
+
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+        <button className="btn btn-ghost btn-sm" onClick={onBack}><i className="ti ti-arrow-left" /> Growers</button>
+        <div style={{ flex: 1 }} />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+        <h1 style={{ fontSize: 21, fontWeight: 400 }}>{grower.name}</h1>
+        <span style={{ fontSize: 13, color: 'var(--text-3)' }}>{flag(grower.country)} {grower.country}{grower.city ? ` · ${grower.city}` : ''}</span>
+      </div>
+
+      <div className="card">
+        <div className="tabs" style={{ padding: '0 20px' }}>
+          <div className={`tab${tab === 'info' ? ' active' : ''}`} onClick={() => setTab('info')}>Info</div>
+          <div className={`tab${tab === 'products' ? ' active' : ''}`} onClick={() => setTab('products')}>
+            Product catalogue <span className="tab-count">{growerProducts.length}</span>
+          </div>
+        </div>
+
+        {tab === 'info' && (
+          <div style={{ padding: 24, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            {[
+              { label: 'Grower name', value: grower.name },
+              { label: 'Code', value: grower.code || '—' },
+              { label: 'Country', value: grower.country ? `${flag(grower.country)} ${grower.country}` : '—' },
+              { label: 'City', value: grower.city || '—' },
+              { label: 'Contact name', value: grower.contact_name || '—' },
+              { label: 'Email', value: grower.contact_email || '—' },
+              { label: 'Phone', value: grower.contact_phone || '—' },
+            ].map(f => (
+              <div key={f.label}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>{f.label}</div>
+                <div style={{ fontSize: 14, color: 'var(--text-1)' }}>{f.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === 'products' && (
+          <div>
+            {/* Add product search */}
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <input
+                  className="form-input"
+                  placeholder="Search and add a product to this grower's catalogue…"
+                  value={addSearch}
+                  onChange={e => setAddSearch(e.target.value)}
+                  onFocus={() => setAdding(true)}
+                  onBlur={() => setTimeout(() => setAdding(false), 200)}
+                />
+                {addResults.length > 0 && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                    background: 'var(--surface)', border: '1px solid var(--border-md)',
+                    borderRadius: 'var(--radius-sm)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                    maxHeight: 240, overflowY: 'auto'
+                  }}>
+                    {addResults.map(p => (
+                      <div key={p.id}
+                        onMouseDown={() => addProduct(p)}
+                        style={{ padding: '9px 14px', cursor: 'pointer', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '0.5px solid var(--border)' }}
+                        className="add-product-row"
+                      >
+                        <span>{p.name}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>{p.vbn_code}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <input className="search-input" placeholder="Filter catalogue…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: 200 }} />
+            </div>
+
+            {/* Catalogue table */}
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Product</th><th>VBN Code</th><th>Country</th><th>BKH</th><th>Typical price</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {loadingProducts && <tr><td colSpan={6}><div className="empty"><i className="ti ti-loader" /><div className="empty-title">Loading…</div></div></td></tr>}
+                  {!loadingProducts && filteredCatalogue.map(gp => (
+                    <tr key={gp.id} style={{ cursor: 'default' }}>
+                      <td style={{ fontWeight: 500 }}>{gp.products?.name || '—'}</td>
+                      <td className="td-mono">{gp.products?.vbn_code || '—'}</td>
+                      <td className="td-muted">{gp.products?.country ? `${flag(gp.products.country)} ${gp.products.country}` : '—'}</td>
+                      <td className="td-mono">{gp.products?.bkh || '—'}</td>
+                      <td className="td-brown">{gp.typical_price ? `$${Number(gp.typical_price).toFixed(2)}` : '—'}</td>
+                      <td style={{ width: 40 }}>
+                        <button className="btn-icon" onClick={() => removeProduct(gp.id)} title="Remove from catalogue">
+                          <i className="ti ti-x" style={{ fontSize: 14 }} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {!loadingProducts && filteredCatalogue.length === 0 && (
+                    <tr><td colSpan={6}>
+                      <div className="empty">
+                        <i className="ti ti-flower" />
+                        <div className="empty-title">No products in catalogue yet</div>
+                        <div className="empty-sub">Search above to add the varieties this grower offers</div>
+                      </div>
+                    </td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
 // ── Growers Page ──────────────────────────────────────────────────────────────
-function GrowersPage({ growers, setGrowers }) {
+function GrowersPage({ growers, setGrowers, products }) {
   const [showNew, setShowNew] = useState(false)
+  const [selectedGrower, setSelectedGrower] = useState(null)
   const [search, setSearch] = useState('')
   const [f, setF] = useState({ name: '', code: '', country: 'EC', city: '', contact_name: '', contact_email: '', contact_phone: '' })
   const [errors, setErrors] = useState({})
@@ -711,7 +888,7 @@ function GrowersPage({ growers, setGrowers }) {
   const handleSave = async () => {
     if (!validate()) return
     setSaving(true)
-    const { data, error } = await supabase.from('farms').insert([f]).select().single()
+    const { data, error } = await supabase.from('growers').insert([f]).select().single()
     setSaving(false)
     if (error) { alert(error.message); return }
     setGrowers(gs => [...gs, data])
@@ -722,6 +899,18 @@ function GrowersPage({ growers, setGrowers }) {
 
   return (
     <>
+      {selectedGrower ? (
+        <GrowerDetail
+          grower={selectedGrower}
+          products={products}
+          onBack={() => setSelectedGrower(null)}
+          onUpdate={updated => {
+            setGrowers(gs => gs.map(g => g.id === updated.id ? updated : g))
+            setSelectedGrower(updated)
+          }}
+        />
+      ) : (
+      <>
       <div className="card">
         <div className="card-header">
           <div className="card-title">Growers <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: 12 }}>({growers.length})</span></div>
@@ -730,17 +919,17 @@ function GrowersPage({ growers, setGrowers }) {
         </div>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Grower name</th><th>Code</th><th>Country</th><th>City</th><th>Contact</th><th>Email</th><th>Phone</th></tr></thead>
+            <thead><tr><th>Grower name</th><th>Code</th><th>Country</th><th>City</th><th>Contact</th><th>Email</th><th>Products</th></tr></thead>
             <tbody>
               {filtered.map(g => (
-                <tr key={g.id}>
+                <tr key={g.id} onClick={() => setSelectedGrower(g)}>
                   <td style={{ fontWeight: 500 }}>{g.name}</td>
                   <td className="td-mono">{g.code || '—'}</td>
                   <td>{g.country ? `${flag(g.country)} ${g.country}` : '—'}</td>
                   <td className="td-muted">{g.city || '—'}</td>
                   <td className="td-muted">{g.contact_name || '—'}</td>
                   <td className="td-muted">{g.contact_email || '—'}</td>
-                  <td className="td-mono">{g.contact_phone || '—'}</td>
+                  <td><span style={{ fontSize: 11, background: 'var(--green-light)', color: 'var(--green-dark)', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>View catalogue →</span></td>
                 </tr>
               ))}
               {filtered.length === 0 && <tr><td colSpan={7}><div className="empty"><i className="ti ti-plant" /><div className="empty-title">No growers yet</div></div></td></tr>}
@@ -748,6 +937,8 @@ function GrowersPage({ growers, setGrowers }) {
           </table>
         </div>
       </div>
+      </>
+      )}
 
       {showNew && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowNew(false)}>
@@ -804,6 +995,8 @@ function GrowersPage({ growers, setGrowers }) {
         </div>
       )}
     </>
+    )}
+  </>
   )
 }
 
@@ -1056,7 +1249,7 @@ export default function App() {
   useEffect(() => {
     if (!user) return
     supabase.from('shipments').select('*').order('created_at', { ascending: false }).then(({ data }) => setShipments(data || []))
-    supabase.from('farms').select('*').order('name').then(({ data }) => setGrowers(data || []))
+    supabase.from('growers').select('*').order('name').then(({ data }) => setGrowers(data || []))
     supabase.from('products').select('*').order('name').then(({ data }) => setProducts(data || []))
     supabase.from('logistics_partners').select('*').order('name').then(({ data }) => setLogistics(data || []))
   }, [user])
@@ -1124,7 +1317,7 @@ export default function App() {
                 onDelete={handleShipmentDelete}
               />
             )}
-            {page === 'growers' && <GrowersPage growers={growers} setGrowers={setGrowers} />}
+            {page === 'growers' && <GrowersPage growers={growers} setGrowers={setGrowers} products={products} />}
             {page === 'logistics' && <LogisticsPage logistics={logistics} setLogistics={setLogistics} />}
             {page === 'products' && <ProductsPage products={products} />}
             {page === 'templates' && <ComingSoon icon="template" title="PO Templates" sub="Save and reuse purchase order lists — coming next" />}

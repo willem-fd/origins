@@ -338,4 +338,5 @@ export const CSS = `
   .filter-chip { padding: 5px 12px; border-radius: 20px; font-size: 12px; border: 0.5px solid var(--border-md); cursor: pointer; background: var(--surface); color: var(--text-2); transition: all 0.12s; }
   .filter-chip:hover { background: var(--surface-2); }
   .filter-chip.active { background: var(--green); color: #fff; border-color: var(--green); }
+  .add-product-row:hover { background: var(--green-pale); }
 `
