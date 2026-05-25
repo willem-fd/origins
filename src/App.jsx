@@ -937,8 +937,6 @@ function GrowersPage({ growers, setGrowers, products }) {
           </table>
         </div>
       </div>
-      </>
-      )}
 
       {showNew && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowNew(false)}>
@@ -994,9 +992,9 @@ function GrowersPage({ growers, setGrowers, products }) {
           </div>
         </div>
       )}
+        </>
+      )}
     </>
-    )}
-  </>
   )
 }
 
