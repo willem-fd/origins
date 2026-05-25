@@ -441,71 +441,78 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
   // Save all to DB
   const save = async (blocksToSave = blocks) => {
     setSaving(true)
-    const rows = []
+
+    // Collect all rows with their current data
+    const allRows = []
     blocksToSave.forEach(block => {
       block.boxes.forEach(box => {
         box.rows.forEach((row, rowIdx) => {
-          rows.push({
-            id: row.isNew ? undefined : row._id,
-            shipment_id: shipmentId,
-            farm_id: block.farmId === 'open' ? null : block.farmId,
-            product_id: row.product_id || null,
-            order_type: row.order_type,
-            status: row.status,
-            box_nr: box.boxNr,
-            boxmark: box.boxmark || null,
-            box_type: box.box_type,
-            length_cm: row.length_cm ? parseInt(row.length_cm) : null,
-            stems_ordered: row.stems_ordered ? parseInt(row.stems_ordered) : null,
-            stems_per_bunch: row.stems_per_bunch ? parseInt(row.stems_per_bunch) : 25,
-            price_ordered: row.price_ordered ? parseFloat(row.price_ordered) : null,
-            notes_buyer: row.notes_buyer || null,
-            sort_order: rowIdx,
+          allRows.push({
+            _localId: row._id,
+            isNew: row.isNew,
+            dbId: row.isNew ? null : row._id,
+            payload: {
+              shipment_id: shipmentId,
+              farm_id: block.farmId === 'open' ? null : block.farmId,
+              product_id: row.product_id || null,
+              order_type: row.order_type,
+              status: row.status,
+              box_nr: box.boxNr,
+              boxmark: box.boxmark || null,
+              box_type: box.box_type,
+              length_cm: row.length_cm ? parseInt(row.length_cm) : null,
+              stems_ordered: row.stems_ordered ? parseInt(row.stems_ordered) : null,
+              stems_per_bunch: row.stems_per_bunch ? parseInt(row.stems_per_bunch) : 25,
+              price_ordered: row.price_ordered ? parseFloat(row.price_ordered) : null,
+              notes_buyer: row.notes_buyer || null,
+              sort_order: rowIdx,
+            }
           })
         })
       })
     })
 
-    const toInsert = rows.filter(r => !r.id)
-    const toUpdate = rows.filter(r => r.id)
+    // Step 1: Get existing DB row IDs for this shipment
+    const { data: existingDbRows } = await supabase
+      .from('purchase_orders').select('id').eq('shipment_id', shipmentId)
+    const existingDbIds = new Set((existingDbRows || []).map(r => r.id))
 
-    // Insert new rows and get back their IDs
-    let insertedRows = []
-    if (toInsert.length) {
-      const { data } = await supabase.from('purchase_orders').insert(toInsert).select()
-      if (data) insertedRows = data
+    // Step 2: Insert new rows
+    const toInsert = allRows.filter(r => r.isNew)
+    const insertIdMap = {} // localId → realId
+    for (const r of toInsert) {
+      const { data } = await supabase.from('purchase_orders').insert([r.payload]).select().single()
+      if (data) insertIdMap[r._localId] = data.id
     }
+
+    // Step 3: Update existing rows
+    const toUpdate = allRows.filter(r => !r.isNew && r.dbId)
     for (const r of toUpdate) {
-      const { id, ...rest } = r
-      await supabase.from('purchase_orders').update(rest).eq('id', id)
+      await supabase.from('purchase_orders').update(r.payload).eq('id', r.dbId)
+      existingDbIds.delete(r.dbId) // mark as accounted for
+    }
+    // Also remove newly inserted from deletion candidates
+    toInsert.forEach(r => { if (insertIdMap[r._localId]) existingDbIds.delete(insertIdMap[r._localId]) })
+
+    // Step 4: Delete rows that are in DB but no longer in blocks
+    if (existingDbIds.size > 0) {
+      await supabase.from('purchase_orders').delete().in('id', [...existingDbIds])
     }
 
-    // Delete rows that exist in DB but not in current blocks
-    const existingIds = rows.filter(r => r.id).map(r => r.id)
-    const { data: dbRows } = await supabase.from('purchase_orders').select('id').eq('shipment_id', shipmentId)
-    if (dbRows) {
-      const toDelete = dbRows.filter(r => !existingIds.includes(r.id)).map(r => r.id)
-      if (toDelete.length) await supabase.from('purchase_orders').delete().in('id', toDelete)
-    }
-
-    // Update blocks to clear isNew flags with real IDs
-    if (insertedRows.length > 0) {
-      let insertIdx = 0
-      const updatedBlocks = blocksToSave.map(block => ({
+    // Step 5: Update local state to clear isNew and assign real IDs
+    if (Object.keys(insertIdMap).length > 0) {
+      setBlocks(prev => prev.map(block => ({
         ...block,
         boxes: block.boxes.map(box => ({
           ...box,
           rows: box.rows.map(row => {
-            if (row.isNew && insertedRows[insertIdx]) {
-              const newId = insertedRows[insertIdx].id
-              insertIdx++
-              return { ...row, isNew: false, _id: newId }
+            if (row.isNew && insertIdMap[row._id]) {
+              return { ...row, isNew: false, _id: insertIdMap[row._id] }
             }
             return row
           })
         }))
-      }))
-      setBlocks(updatedBlocks)
+      })))
     }
 
     setSaving(false)
