@@ -349,7 +349,7 @@ function FarmBlock({ block, blockIndex, farms, products, onUpdate, onDelete, onA
 }
 
 // ── Main PO Editor ───────────────────────────────────────────────────────────
-export default function POEditor({ shipmentId, farms, products, onFirstLineAdded }) {
+export default function POEditor({ shipmentId, farms, products, onFirstLineAdded, onClosePurchasing }) {
   const [blocks, setBlocks] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -568,6 +568,11 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
           <button className="btn btn-ghost btn-sm" onClick={() => setShowAddFarm(true)}>
             <i className="ti ti-building-factory" aria-hidden="true" /> Add grower
           </button>
+          {onClosePurchasing && (
+            <button className="btn btn-primary btn-sm" onClick={onClosePurchasing}>
+              <i className="ti ti-lock" aria-hidden="true" /> Close purchasing
+            </button>
+          )}
         </div>
 
         {blocks.length === 0 ? (

@@ -471,18 +471,12 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
 
         {tab === 'orders' && (
           <div style={{ padding: 16 }}>
-            {s.status === 'active' && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setConfirmClose(true)}>
-                  <i className="ti ti-lock" /> Close purchasing
-                </button>
-              </div>
-            )}
             <POEditor
               shipmentId={s.id}
               farms={growers}
               products={products}
               onFirstLineAdded={() => s.status === 'draft' && updateStatus('active')}
+              onClosePurchasing={s.status === 'active' ? () => setConfirmClose(true) : null}
             />
           </div>
         )}
