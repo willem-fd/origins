@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { CSS } from './styles'
 import POEditor from './POEditor'
+import CompaniesPage from './CompaniesPage'
 import { COUNTRIES, SHIP_STATUSES, STATUS_LABELS, STATUS_BADGE, flag, fmt, validateEmail, validatePhone } from './constants'
 
 // ── Status Badge ──────────────────────────────────────────────────────────────
@@ -86,6 +87,7 @@ function Sidebar({ page, setPage, user, pendingCount, onSignOut }) {
           <div className="nav-label">Relations</div>
           {ni('growers', 'plant', 'Growers')}
           {ni('logistics', 'truck', 'Logistics')}
+          {ni('companies', 'building', 'Companies')}
         </div>
         <div className="nav-section">
           <div className="nav-label">Finance</div>
@@ -1278,7 +1280,7 @@ export default function App() {
     dashboard: 'Dashboard', shipments: 'Shipments', templates: 'PO Templates',
     growers: 'Growers', logistics: 'Logistics Partners',
     statements: 'Account Statements', claims: 'Claims & Credit Notes',
-    products: 'Product Catalogue', users: 'Users', settings: 'Settings'
+    products: 'Product Catalogue', users: 'Users', settings: 'Settings', companies: 'Companies'
   }
 
   if (loading) return (
@@ -1318,6 +1320,7 @@ export default function App() {
             )}
             {page === 'growers' && <GrowersPage growers={growers} setGrowers={setGrowers} products={products} />}
             {page === 'logistics' && <LogisticsPage logistics={logistics} setLogistics={setLogistics} />}
+            {page === 'companies' && <CompaniesPage />}
             {page === 'products' && <ProductsPage products={products} />}
             {page === 'templates' && <ComingSoon icon="template" title="PO Templates" sub="Save and reuse purchase order lists — coming next" />}
             {page === 'statements' && <ComingSoon icon="file-invoice" title="Account Statements" sub="Monthly farm payment reconciliation — coming next" />}
