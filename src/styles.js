@@ -158,6 +158,7 @@ export const CSS = `
   .badge-active    { background: #EAF2EE; color: #1A6640; }
   .badge-dropped   { background: #FEF3E8; color: #7A4A10; }
   .badge-transit   { background: #EAF0FA; color: #1E4080; }
+  .badge-departed  { background: #F0E8FA; color: #5B21B6; }
   .badge-arrived   { background: #EAF2EE; color: #1A6640; }
   .badge-completed { background: var(--surface-3); color: var(--text-2); }
   .badge-pending   { background: var(--surface-3); color: var(--text-2); }
@@ -191,7 +192,7 @@ export const CSS = `
     color: var(--text-1); background: var(--surface); outline: none;
     resize: vertical; min-height: 72px; width: 100%;
   }
-  .form-error { font-size: 11px; color: #b91c1c; margin-top: 2px; }
+  .form-section-label { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; padding-bottom: 2px; border-bottom: 0.5px solid var(--border); margin-bottom: 2px; }
 
   /* MODAL */
   .modal-overlay {

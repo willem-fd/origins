@@ -349,7 +349,7 @@ function FarmBlock({ block, blockIndex, farms, products, onUpdate, onDelete, onA
 }
 
 // ── Main PO Editor ───────────────────────────────────────────────────────────
-export default function POEditor({ shipmentId, farms, products }) {
+export default function POEditor({ shipmentId, farms, products, onFirstLineAdded }) {
   const [blocks, setBlocks] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -434,6 +434,8 @@ export default function POEditor({ shipmentId, farms, products }) {
     setBlocks(nb)
     setShowAddFarm(false)
     autoSave(nb)
+    // Trigger status → Active when first grower is added
+    if (blocks.length === 0 && onFirstLineAdded) onFirstLineAdded()
   }
 
   // Save all to DB
