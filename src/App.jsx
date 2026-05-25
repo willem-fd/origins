@@ -865,8 +865,8 @@ function GrowerDetail({ grower, products, onBack, onUpdate }) {
 
 // ── Growers Page ──────────────────────────────────────────────────────────────
 function GrowersPage({ growers, setGrowers, products }) {
-  const [showNew, setShowNew] = useState(false)
   const [selectedGrower, setSelectedGrower] = useState(null)
+  const [showNew, setShowNew] = useState(false)
   const [search, setSearch] = useState('')
   const [f, setF] = useState({ name: '', code: '', country: 'EC', city: '', contact_name: '', contact_email: '', contact_phone: '' })
   const [errors, setErrors] = useState({})
@@ -897,20 +897,22 @@ function GrowersPage({ growers, setGrowers, products }) {
     setErrors({})
   }
 
+  if (selectedGrower) {
+    return (
+      <GrowerDetail
+        grower={selectedGrower}
+        products={products}
+        onBack={() => setSelectedGrower(null)}
+        onUpdate={updated => {
+          setGrowers(gs => gs.map(g => g.id === updated.id ? updated : g))
+          setSelectedGrower(updated)
+        }}
+      />
+    )
+  }
+
   return (
     <>
-      {selectedGrower ? (
-        <GrowerDetail
-          grower={selectedGrower}
-          products={products}
-          onBack={() => setSelectedGrower(null)}
-          onUpdate={updated => {
-            setGrowers(gs => gs.map(g => g.id === updated.id ? updated : g))
-            setSelectedGrower(updated)
-          }}
-        />
-      ) : (
-      <>
       <div className="card">
         <div className="card-header">
           <div className="card-title">Growers <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: 12 }}>({growers.length})</span></div>
@@ -919,17 +921,17 @@ function GrowersPage({ growers, setGrowers, products }) {
         </div>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Grower name</th><th>Code</th><th>Country</th><th>City</th><th>Contact</th><th>Email</th><th>Products</th></tr></thead>
+            <thead><tr><th>Grower name</th><th>Code</th><th>Country</th><th>City</th><th>Contact</th><th>Email</th><th></th></tr></thead>
             <tbody>
               {filtered.map(g => (
-                <tr key={g.id} onClick={() => setSelectedGrower(g)}>
+                <tr key={g.id} onClick={() => setSelectedGrower(g)} style={{ cursor: 'pointer' }}>
                   <td style={{ fontWeight: 500 }}>{g.name}</td>
                   <td className="td-mono">{g.code || '—'}</td>
                   <td>{g.country ? `${flag(g.country)} ${g.country}` : '—'}</td>
                   <td className="td-muted">{g.city || '—'}</td>
                   <td className="td-muted">{g.contact_name || '—'}</td>
                   <td className="td-muted">{g.contact_email || '—'}</td>
-                  <td><span style={{ fontSize: 11, background: 'var(--green-light)', color: 'var(--green-dark)', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>View catalogue →</span></td>
+                  <td><span style={{ fontSize: 11, background: 'var(--green-light)', color: 'var(--green-dark)', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>Open →</span></td>
                 </tr>
               ))}
               {filtered.length === 0 && <tr><td colSpan={7}><div className="empty"><i className="ti ti-plant" /><div className="empty-title">No growers yet</div></div></td></tr>}
@@ -992,11 +994,10 @@ function GrowersPage({ growers, setGrowers, products }) {
           </div>
         </div>
       )}
-        </>
-      )}
     </>
   )
 }
+
 
 // ── Logistics Page ────────────────────────────────────────────────────────────
 function LogisticsPage({ logistics, setLogistics }) {
