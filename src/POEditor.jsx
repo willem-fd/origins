@@ -29,6 +29,87 @@ const OT_MAP = Object.fromEntries(ORDER_TYPES.map(o => [o.key, o]))
 
 const BOX_TYPES = ['FB','HB','QB','EB']
 
+// ── Product Combobox ──────────────────────────────────────────────────────────
+function ProductCombobox({ value, products, onChange, inputRef }) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const [highlighted, setHighlighted] = useState(0)
+  const containerRef = useRef(null)
+  const listRef = useRef(null)
+
+  const selected = products.find(p => p.id === value)
+  const displayText = selected ? `${selected.name}${selected.vbn_code ? ` (${selected.vbn_code})` : ''}` : ''
+
+  const filtered = query.length < 1 ? [] : products.filter(p => {
+    const q = query.toLowerCase()
+    return (p.name || '').toLowerCase().includes(q) || (p.vbn_code || '').includes(q)
+  }).slice(0, 40)
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = e => { if (containerRef.current && !containerRef.current.contains(e.target)) { setOpen(false); setQuery('') } }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const selectProduct = (p) => {
+    onChange(p.id)
+    setOpen(false)
+    setQuery('')
+  }
+
+  const handleKeyDown = e => {
+    if (!open) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, filtered.length - 1)) }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)) }
+    if (e.key === 'Enter' && filtered[highlighted]) { e.preventDefault(); selectProduct(filtered[highlighted]) }
+    if (e.key === 'Escape') { setOpen(false); setQuery('') }
+  }
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+      <input
+        ref={inputRef}
+        className="cell-input"
+        style={{ fontSize: 12.5, cursor: 'text' }}
+        placeholder="— type to search variety —"
+        value={open ? query : displayText}
+        onFocus={() => { setOpen(true); setQuery(''); setHighlighted(0) }}
+        onChange={e => { setQuery(e.target.value); setHighlighted(0) }}
+        onKeyDown={handleKeyDown}
+        autoComplete="off"
+      />
+      {open && query.length >= 1 && (
+        <div ref={listRef} style={{
+          position: 'absolute', top: '100%', left: 0, right: 0,
+          background: 'var(--surface)', border: '1px solid var(--border-md)',
+          borderRadius: 'var(--radius-sm)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          zIndex: 999, maxHeight: 240, overflowY: 'auto'
+        }}>
+          {filtered.length === 0 && (
+            <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text-3)' }}>No matches for "{query}"</div>
+          )}
+          {filtered.map((p, i) => (
+            <div key={p.id}
+              onMouseDown={() => selectProduct(p)}
+              style={{
+                padding: '8px 12px', fontSize: 12.5, cursor: 'pointer',
+                background: i === highlighted ? 'var(--green-light)' : 'transparent',
+                color: 'var(--text-1)', borderBottom: '0.5px solid var(--border)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              }}
+              onMouseEnter={() => setHighlighted(i)}
+            >
+              <span>{p.name}</span>
+              {p.vbn_code && <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>{p.vbn_code}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function newRow(farmId, boxNr, sortOrder) {
   return {
     _id: `new_${Date.now()}_${Math.random()}`,
@@ -121,12 +202,12 @@ function ProductRow({ row, rowIndex, products, onUpdate, onDelete, onKeyDown, in
 
       {/* Product */}
       <div className="cell" style={{ flex: 3, minWidth: 180 }}>
-        <select className="cell-select" value={row.product_id || ''} style={{ fontSize: 12.5 }}
-          onChange={e => set('product_id', e.target.value || null)}
-          ref={inputRef}>
-          <option value="">— select variety —</option>
-          {products.map(p => <option key={p.id} value={p.id}>{p.name}{p.vbn_code ? ` (${p.vbn_code})` : ''}</option>)}
-        </select>
+        <ProductCombobox
+          value={row.product_id}
+          products={products}
+          onChange={v => set('product_id', v)}
+          inputRef={inputRef}
+        />
       </div>
 
       {/* Length */}
@@ -611,14 +692,16 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
         )}
       </div>
 
-      {/* Totals */}
+      </div>
+
+      {/* Totals — outside the editor card so never clipped */}
       {blocks.length > 0 && (
-        <div className="totals-bar">
+        <div className="totals-bar" style={{ marginTop: 12 }}>
           <div className="total-item"><div className="total-label">Stems ordered</div><div className="total-val">{totalStemsOrdered.toLocaleString()}</div></div>
           <div className="total-item"><div className="total-label">Stems confirmed</div><div className="total-val hi">{totalStemsConfirmed.toLocaleString()}</div></div>
           <div className="total-item"><div className="total-label">Cost ordered</div><div className="total-val">${totalCostOrdered.toFixed(2)}</div></div>
           <div className="total-item"><div className="total-label">Cost confirmed</div><div className="total-val hi">${totalCostConfirmed.toFixed(2)}</div></div>
-          <div className="total-item"><div className="total-label">Farms</div><div className="total-val">{blocks.length}</div></div>
+          <div className="total-item"><div className="total-label">Growers</div><div className="total-val">{blocks.length}</div></div>
           <div className="total-item"><div className="total-label">Order lines</div><div className="total-val">{allRows.length}</div></div>
         </div>
       )}
