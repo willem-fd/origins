@@ -473,7 +473,7 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
     const load = async () => {
       const { data } = await supabase
         .from('purchase_orders')
-        .select('*, growers(id,name,code), products(id,name,vbn_code)')
+        .select('*, products(id,name,vbn_code)')
         .eq('shipment_id', shipmentId)
         .order('sort_order')
 
@@ -483,8 +483,9 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
       const farmMap = {}
       data.forEach(po => {
         const fid = po.farm_id || 'open'
-        const fname = po.growers?.name || '— Open market'
-        const fcode = po.growers?.code || ''
+        const grower = farms.find(f => f.id === fid)
+        const fname = grower?.name || '— Open market'
+        const fcode = grower?.code || ''
         if (!farmMap[fid]) farmMap[fid] = { farmId: fid, farmName: fname, farmCode: fcode, collapsed: false, boxes: {} }
         const bn = po.box_nr || 1
         if (!farmMap[fid].boxes[bn]) farmMap[fid].boxes[bn] = { boxNr: bn, boxmark: po.boxmark || '', box_type: po.box_type || 'HB', rows: [] }
