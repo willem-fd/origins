@@ -358,6 +358,102 @@ function ContactsTab({ company }) {
   )
 }
 
+// ── Product Catalogue Tab (growers only) ──────────────────────────────────────
+function CatalogueTab({ company }) {
+  const [products, setProducts] = useState([])
+  const [catalogue, setCatalogue] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [addSearch, setAddSearch] = useState('')
+  const [addResults, setAddResults] = useState([])
+
+  useEffect(() => {
+    supabase.from('products').select('*').order('name').then(({ data }) => setProducts(data || []))
+  }, [])
+
+  useEffect(() => {
+    setLoading(true)
+    supabase
+      .from('grower_products')
+      .select('*, products(id, name, vbn_code, country, bkh)')
+      .eq('company_id', company.id)
+      .order('created_at')
+      .then(({ data }) => { setCatalogue(data || []); setLoading(false) })
+  }, [company.id])
+
+  useEffect(() => {
+    if (addSearch.length < 2) { setAddResults([]); return }
+    const q = addSearch.toLowerCase()
+    const existing = new Set(catalogue.map(gp => gp.product_id))
+    setAddResults(products.filter(p => !existing.has(p.id) &&
+      ((p.name || '').toLowerCase().includes(q) || (p.vbn_code || '').includes(q))).slice(0, 30))
+  }, [addSearch, catalogue, products])
+
+  const addProduct = async (product) => {
+    const { data, error } = await supabase
+      .from('grower_products')
+      .insert([{ company_id: company.id, product_id: product.id }])
+      .select('*, products(id, name, vbn_code, country, bkh)')
+      .single()
+    if (!error && data) { setCatalogue(prev => [...prev, data]); setAddSearch(''); setAddResults([]) }
+  }
+
+  const removeProduct = async (gpId) => {
+    await supabase.from('grower_products').delete().eq('id', gpId)
+    setCatalogue(prev => prev.filter(gp => gp.id !== gpId))
+  }
+
+  const filtered = catalogue.filter(gp =>
+    !search || (gp.products?.name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (gp.products?.vbn_code || '').includes(search))
+
+  return (
+    <div>
+      <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <input className="form-input" placeholder="Search and add a product to this grower's catalogue…"
+            value={addSearch} onChange={e => setAddSearch(e.target.value)} />
+          {addResults.length > 0 && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--surface)', border: '1px solid var(--border-md)', borderRadius: 'var(--radius-sm)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxHeight: 240, overflowY: 'auto' }}>
+              {addResults.map(p => (
+                <div key={p.id} onMouseDown={() => addProduct(p)} className="add-product-row"
+                  style={{ padding: '9px 14px', cursor: 'pointer', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '0.5px solid var(--border)' }}>
+                  <span>{p.name}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>{p.vbn_code}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <input className="search-input" placeholder="Filter catalogue…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: 200 }} />
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th>Product</th><th>VBN Code</th><th>Country</th><th>BKH</th><th>Typical price</th><th></th></tr></thead>
+          <tbody>
+            {loading && <tr><td colSpan={6}><div className="empty"><i className="ti ti-loader" /><div className="empty-title">Loading…</div></div></td></tr>}
+            {!loading && filtered.map(gp => (
+              <tr key={gp.id} style={{ cursor: 'default' }}>
+                <td style={{ fontWeight: 500 }}>{gp.products?.name || '—'}</td>
+                <td className="td-mono">{gp.products?.vbn_code || '—'}</td>
+                <td className="td-muted">{gp.products?.country ? `${flag(gp.products.country)} ${gp.products.country}` : '—'}</td>
+                <td className="td-mono">{gp.products?.bkh || '—'}</td>
+                <td className="td-brown">{gp.typical_price ? `$${Number(gp.typical_price).toFixed(2)}` : '—'}</td>
+                <td style={{ width: 40 }}>
+                  <button className="btn-icon" onClick={() => removeProduct(gp.id)} title="Remove from catalogue"><i className="ti ti-x" style={{ fontSize: 14 }} /></button>
+                </td>
+              </tr>
+            ))}
+            {!loading && filtered.length === 0 && (
+              <tr><td colSpan={6}><div className="empty"><i className="ti ti-flower" /><div className="empty-title">No products in catalogue yet</div><div className="empty-sub">Search above to add the varieties this grower offers</div></div></td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // ── Main CompanyProfile component ─────────────────────────────────────────────
 export default function CompanyProfile({ company, onBack, onUpdate }) {
   const [tab, setTab] = useState('general')
@@ -385,11 +481,13 @@ export default function CompanyProfile({ company, onBack, onUpdate }) {
           <div className={`tab${tab === 'general' ? ' active' : ''}`} onClick={() => setTab('general')}>General info</div>
           <div className={`tab${tab === 'banking' ? ' active' : ''}`} onClick={() => setTab('banking')}>Banking</div>
           <div className={`tab${tab === 'contacts' ? ' active' : ''}`} onClick={() => setTab('contacts')}>Contacts & Users</div>
+          {c.type === 'grower' && <div className={`tab${tab === 'catalogue' ? ' active' : ''}`} onClick={() => setTab('catalogue')}>Product catalogue</div>}
         </div>
 
         {tab === 'general' && <GeneralTab company={c} onSave={updated => { setC(updated); if (onUpdate) onUpdate(updated) }} />}
         {tab === 'banking' && <BankingTab company={c} />}
         {tab === 'contacts' && <ContactsTab company={c} />}
+        {tab === 'catalogue' && c.type === 'grower' && <CatalogueTab company={c} />}
       </div>
     </>
   )
