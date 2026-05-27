@@ -91,7 +91,7 @@ export const CSS = `
   }
   .topbar-title { font-size: 15px; font-weight: 500; color: var(--text-1); flex: 1; }
   .topbar-sub { font-size: 13px; color: var(--text-3); margin-left: 8px; font-weight: 400; }
-  .page { flex: 1; overflow-y: auto; padding: 24px 28px 64px; display: flex; flex-direction: column; gap: 18px; -webkit-overflow-scrolling: touch; }
+  .page { flex: 1; overflow-y: auto; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 18px; -webkit-overflow-scrolling: touch; }
 
   /* BUTTONS */
   .btn {
@@ -277,7 +277,7 @@ export const CSS = `
   .meta-value.mono { font-family: var(--mono); font-size: 13px; }
 
   /* PO EDITOR */
-  .po-editor { display: flex; flex-direction: column; border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+  .po-editor { display: flex; flex-direction: column; border: 0.5px solid var(--border); border-radius: var(--radius); background: var(--surface); }
   .po-editor-toolbar { display: flex; align-items: center; padding: 12px 16px; border-bottom: 0.5px solid var(--border); gap: 10px; background: var(--surface); }
   .farm-block { border-bottom: 0.5px solid var(--border); }
   .farm-block:last-child { border-bottom: none; }
