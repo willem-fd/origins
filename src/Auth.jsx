@@ -139,7 +139,7 @@ function ForgotForm({ onBack }) {
       // Only surface true rate-limit errors; otherwise show success regardless.
     }
     if (error && /rate limit/i.test(error.message)) {
-      setErr('Too many attempts just now. Please wait a moment and try again.')
+      setErr('A reset email was just sent. Please use the link in your inbox, or try again in a few minutes.')
       return
     }
     setSent(true)
