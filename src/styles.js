@@ -83,7 +83,7 @@ export const CSS = `
   .user-role { font-size: 10.5px; color: rgba(255,255,255,0.25); }
 
   /* MAIN */
-  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; min-height: 0; }
   .topbar {
     height: 56px; display: flex; align-items: center;
     padding: 0 28px; gap: 12px; flex-shrink: 0;
@@ -91,7 +91,7 @@ export const CSS = `
   }
   .topbar-title { font-size: 15px; font-weight: 500; color: var(--text-1); flex: 1; }
   .topbar-sub { font-size: 13px; color: var(--text-3); margin-left: 8px; font-weight: 400; }
-  .page { flex: 1; overflow-y: auto; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 18px; -webkit-overflow-scrolling: touch; }
+  .page { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 18px; -webkit-overflow-scrolling: touch; }
 
   /* BUTTONS */
   .btn {
