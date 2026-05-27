@@ -61,7 +61,7 @@ function LoginPage({ onLogin }) {
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
-function Sidebar({ page, setPage, user, pendingCount, onSignOut }) {
+function Sidebar({ page, setPage, user, profile, pendingCount, onSignOut }) {
   const ni = (id, icon, label, badge) => (
     <div className={`nav-item${page === id ? ' active' : ''}`} onClick={() => setPage(id)}>
       <i className={`ti ti-${icon}`} aria-hidden="true" />{label}
@@ -103,10 +103,10 @@ function Sidebar({ page, setPage, user, pendingCount, onSignOut }) {
       </div>
       <div className="sidebar-footer">
         <div className="user-row" onClick={onSignOut}>
-          <div className="avatar">{(user?.email || 'U').slice(0, 2).toUpperCase()}</div>
+          <div className="avatar">{((profile?.full_name || user?.email || 'U')).slice(0, 2).toUpperCase()}</div>
           <div>
-            <div className="user-name">{user?.email?.split('@')[0]}</div>
-            <div className="user-role">Admin · sign out</div>
+            <div className="user-name">{profile?.full_name || user?.email?.split('@')[0]}</div>
+            <div className="user-role">{profile?.is_super_admin ? 'Super admin' : (profile?.role === 'admin' ? 'Admin' : 'Member')} · sign out</div>
           </div>
         </div>
       </div>
@@ -805,6 +805,7 @@ function ComingSoon({ icon, title, sub }) {
 // ── Root App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null)
+  const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState('shipments')
   const [shipments, setShipments] = useState([])
@@ -819,6 +820,12 @@ export default function App() {
     supabase.auth.onAuthStateChange((_, session) => setUser(session?.user ?? null))
   }, [])
 
+  // Load the user's row from public.users (links the auth login to a company + role + super-admin flag)
+  useEffect(() => {
+    if (!user) { setProfile(null); return }
+    supabase.from('users').select('*').eq('id', user.id).maybeSingle().then(({ data }) => setProfile(data || null))
+  }, [user])
+
   useEffect(() => {
     if (!user) return
     supabase.from('shipments').select('*').order('created_at', { ascending: false }).then(({ data }) => setShipments(data || []))
@@ -827,7 +834,7 @@ export default function App() {
     supabase.from('companies').select('*').eq('type', 'logistics').order('name').then(({ data }) => setLogistics(data || []))
   }, [user])
 
-  const handleSignOut = async () => { await supabase.auth.signOut(); setUser(null) }
+  const handleSignOut = async () => { await supabase.auth.signOut(); setUser(null); setProfile(null) }
 
   const handleNewShipment = s => {
     setShipments(p => [s, ...p])
@@ -866,7 +873,7 @@ export default function App() {
     <>
       <style>{CSS}</style>
       <div className="app">
-        <Sidebar page={selectedShipment ? 'shipments' : page} setPage={navPage} user={user} pendingCount={pendingCount} onSignOut={handleSignOut} />
+        <Sidebar page={selectedShipment ? 'shipments' : page} setPage={navPage} user={user} profile={profile} pendingCount={pendingCount} onSignOut={handleSignOut} />
         <div className="main">
           <div className="topbar">
             <div className="topbar-title">
