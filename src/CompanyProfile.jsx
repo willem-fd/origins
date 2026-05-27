@@ -20,6 +20,37 @@ function Section({ title, children }) {
   )
 }
 
+function AddrFields({ type, addr, setAddr }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="form-row">
+        <div className="form-group" style={{ flex: 2 }}>
+          <label className="form-label">Street & number</label>
+          <input className="form-input" value={addr?.street || ''} onChange={e => setAddr(type, 'street', e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Postal code</label>
+          <input className="form-input" value={addr?.postal_code || ''} onChange={e => setAddr(type, 'postal_code', e.target.value)} />
+        </div>
+      </div>
+      <div className="form-row">
+        <div className="form-group">
+          <label className="form-label">City / Town</label>
+          <input className="form-input" value={addr?.city || ''} onChange={e => setAddr(type, 'city', e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Province / State</label>
+          <input className="form-input" value={addr?.province || ''} onChange={e => setAddr(type, 'province', e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Country</label>
+          <CountrySelect value={addr?.country} onChange={v => setAddr(type, 'country', v)} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── General Info Tab ──────────────────────────────────────────────────────────
 function GeneralTab({ company, onSave }) {
   const [f, setF] = useState({
@@ -78,34 +109,6 @@ function GeneralTab({ company, onSave }) {
     else setProdAddr(p => ({ ...p, [k]: v }))
   }
 
-  const AddrFields = ({ type, addr, setAddr }) => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div className="form-row">
-        <div className="form-group" style={{ flex: 2 }}>
-          <label className="form-label">Street & number</label>
-          <input className="form-input" value={addr?.street || ''} onChange={e => setAddr(type, 'street', e.target.value)} />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Postal code</label>
-          <input className="form-input" value={addr?.postal_code || ''} onChange={e => setAddr(type, 'postal_code', e.target.value)} />
-        </div>
-      </div>
-      <div className="form-row">
-        <div className="form-group">
-          <label className="form-label">City / Town</label>
-          <input className="form-input" value={addr?.city || ''} onChange={e => setAddr(type, 'city', e.target.value)} />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Province / State</label>
-          <input className="form-input" value={addr?.province || ''} onChange={e => setAddr(type, 'province', e.target.value)} />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Country</label>
-          <CountrySelect value={addr?.country} onChange={v => setAddr(type, 'country', v)} />
-        </div>
-      </div>
-    </div>
-  )
 
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
