@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import { CSS } from './styles'
 import POEditor from './POEditor'
 import CompaniesPage from './CompaniesPage'
+import Auth from './Auth'
 import { COUNTRIES, SHIP_STATUSES, STATUS_LABELS, STATUS_BADGE, flag, fmt, validateEmail, validatePhone } from './constants'
 
 // ── Status Badge ──────────────────────────────────────────────────────────────
@@ -21,42 +22,6 @@ function CountrySelect({ value, onChange, className = 'form-select', placeholder
       <option value="">{placeholder}</option>
       {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
     </select>
-  )
-}
-
-// ── Login ─────────────────────────────────────────────────────────────────────
-function LoginPage({ onLogin }) {
-  const [email, setEmail] = useState('')
-  const [pw, setPw] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [err, setErr] = useState('')
-  const submit = async e => {
-    e.preventDefault(); setLoading(true); setErr('')
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pw })
-    if (error) setErr(error.message)
-    else onLogin(data.user)
-    setLoading(false)
-  }
-  return (
-    <div className="login-page">
-      <div className="login-card">
-        <img src="/origins-logo.svg" alt="Origins" style={{ width: 160, marginBottom: 32, display: 'block' }} />
-        {err && <div style={{ background: '#fef2f2', color: '#b91c1c', padding: '10px 14px', borderRadius: 7, fontSize: 13, marginBottom: 14 }}>{err}</div>}
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div className="form-group">
-            <label className="form-label">Email</label>
-            <input className="form-input" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@farmdirect.nl" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input className="form-input" type="password" value={pw} onChange={e => setPw(e.target.value)} required placeholder="••••••••" />
-          </div>
-          <button className="btn btn-primary" type="submit" disabled={loading} style={{ marginTop: 6, justifyContent: 'center', padding: 11 }}>
-            {loading ? 'Signing in…' : 'Sign in'}
-          </button>
-        </form>
-      </div>
-    </div>
   )
 }
 
@@ -867,7 +832,7 @@ export default function App() {
       ORIGINS
     </div>
   )
-  if (!user) return <><style>{CSS}</style><LoginPage onLogin={setUser} /></>
+  if (!user) return <><style>{CSS}</style><Auth onLogin={setUser} /></>
 
   return (
     <>
