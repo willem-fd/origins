@@ -21,7 +21,7 @@ export default function CompaniesPage() {
   const [showNew, setShowNew] = useState(false)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
-  const [f, setF] = useState({ name: '', brand_name: '', company_type: 'grower', country: '', city: '', email: '', phone: '' })
+  const [f, setF] = useState({ name: '', brand_name: '', type: 'grower', country: '', city: '', email: '', phone: '' })
   const [saving, setSaving] = useState(false)
   const set = (k, v) => setF(p => ({ ...p, [k]: v }))
 
@@ -32,7 +32,7 @@ export default function CompaniesPage() {
   const filtered = companies.filter(c => {
     const q = search.toLowerCase()
     const ms = !q || c.name.toLowerCase().includes(q) || (c.brand_name || '').toLowerCase().includes(q)
-    const mt = typeFilter === 'all' || c.company_type === typeFilter
+    const mt = typeFilter === 'all' || c.type === typeFilter
     return ms && mt
   })
 
@@ -44,7 +44,7 @@ export default function CompaniesPage() {
     if (error) { alert(error.message); return }
     setCompanies(p => [...p, data].sort((a, b) => a.name.localeCompare(b.name)))
     setShowNew(false)
-    setF({ name: '', brand_name: '', company_type: 'grower', country: '', city: '', email: '', phone: '' })
+    setF({ name: '', brand_name: '', type: 'grower', country: '', city: '', email: '', phone: '' })
     setSelected(data)
   }
 
@@ -89,8 +89,8 @@ export default function CompaniesPage() {
                     {c.brand_name && c.name !== c.brand_name && <div style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{c.name}</div>}
                   </td>
                   <td>
-                    <span style={{ fontSize: 11.5, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: (TYPE_COLORS[c.company_type] || '#6B7280') + '18', color: TYPE_COLORS[c.company_type] || '#6B7280' }}>
-                      {TYPE_LABELS[c.company_type] || c.company_type}
+                    <span style={{ fontSize: 11.5, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: (TYPE_COLORS[c.type] || '#6B7280') + '18', color: TYPE_COLORS[c.type] || '#6B7280' }}>
+                      {TYPE_LABELS[c.type] || c.type}
                     </span>
                   </td>
                   <td className="td-muted">{c.country ? `${flag(c.country)} ${c.country}` : '—'}</td>
@@ -136,7 +136,7 @@ export default function CompaniesPage() {
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Company type</label>
-                  <select className="form-select" value={f.company_type} onChange={e => set('company_type', e.target.value)}>
+                  <select className="form-select" value={f.type} onChange={e => set('type', e.target.value)}>
                     <option value="buyer">Buyer</option>
                     <option value="grower">Grower</option>
                     <option value="logistics">Logistics</option>

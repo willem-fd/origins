@@ -372,8 +372,8 @@ export default function CompanyProfile({ company, onBack, onUpdate }) {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
         <h1 style={{ fontSize: 21, fontWeight: 400 }}>{c.brand_name || c.name}</h1>
         {c.brand_name && c.name !== c.brand_name && <span style={{ fontSize: 13, color: 'var(--text-3)' }}>{c.name}</span>}
-        <span style={{ fontSize: 11.5, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: typeColors[c.company_type] + '18', color: typeColors[c.company_type] }}>
-          {typeLabels[c.company_type]}
+        <span style={{ fontSize: 11.5, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: typeColors[c.type] + '18', color: typeColors[c.type] }}>
+          {typeLabels[c.type]}
         </span>
       </div>
 
