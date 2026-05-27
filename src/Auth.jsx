@@ -33,7 +33,6 @@ export default function Auth({ onLogin }) {
       <div className="auth-card">
         <div className="auth-brand">
           <img src="/origins-logo.svg" alt="Origins" className="auth-logo" />
-          <p className="auth-tagline">Buy at the source. Built for flowers.</p>
         </div>
         {mode === 'login'  && <LoginForm onLogin={onLogin} onForgot={() => setMode('forgot')} />}
         {mode === 'forgot' && <ForgotForm onBack={() => setMode('login')} />}
@@ -76,9 +75,6 @@ function LoginForm({ onLogin, onForgot }) {
 
   return (
     <form onSubmit={submit} className="auth-form" noValidate>
-      <h1 className="auth-title">Welcome back</h1>
-      <p className="auth-sub">Sign in to your Origins account</p>
-
       {err && <div className="auth-alert" role="alert">{err}</div>}
 
       <Field
