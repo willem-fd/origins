@@ -706,7 +706,7 @@ function GrowerDetail({ grower, products, onBack, onUpdate }) {
       const { data } = await supabase
         .from('grower_products')
         .select('*, products(id, name, vbn_code, country, bkh)')
-        .eq('grower_id', grower.id)
+        .eq('company_id', grower.id)
         .order('created_at')
       setGrowerProducts(data || [])
       setLoadingProducts(false)
@@ -729,7 +729,7 @@ function GrowerDetail({ grower, products, onBack, onUpdate }) {
   const addProduct = async (product) => {
     const { data, error } = await supabase
       .from('grower_products')
-      .insert([{ grower_id: grower.id, product_id: product.id }])
+      .insert([{ company_id: grower.id, product_id: product.id }])
       .select('*, products(id, name, vbn_code, country, bkh)')
       .single()
     if (!error && data) {
@@ -1250,9 +1250,9 @@ export default function App() {
   useEffect(() => {
     if (!user) return
     supabase.from('shipments').select('*').order('created_at', { ascending: false }).then(({ data }) => setShipments(data || []))
-    supabase.from('growers').select('*').order('name').then(({ data }) => setGrowers(data || []))
+    supabase.from('companies').select('*').eq('type', 'grower').order('name').then(({ data }) => setGrowers(data || []))
     supabase.from('products').select('*').order('name').then(({ data }) => setProducts(data || []))
-    supabase.from('logistics_partners').select('*').order('name').then(({ data }) => setLogistics(data || []))
+    supabase.from('companies').select('*').eq('type', 'logistics').order('name').then(({ data }) => setLogistics(data || []))
   }, [user])
 
   const handleSignOut = async () => { await supabase.auth.signOut(); setUser(null) }
@@ -1318,8 +1318,8 @@ export default function App() {
                 onDelete={handleShipmentDelete}
               />
             )}
-            {page === 'growers' && <GrowersPage growers={growers} setGrowers={setGrowers} products={products} />}
-            {page === 'logistics' && <LogisticsPage logistics={logistics} setLogistics={setLogistics} />}
+            {page === 'growers' && <CompaniesPage initialType="grower" />}
+            {page === 'logistics' && <CompaniesPage initialType="logistics" />}
             {page === 'companies' && <CompaniesPage />}
             {page === 'products' && <ProductsPage products={products} />}
             {page === 'templates' && <ComingSoon icon="template" title="PO Templates" sub="Save and reuse purchase order lists — coming next" />}

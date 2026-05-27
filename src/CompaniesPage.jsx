@@ -15,15 +15,20 @@ function CountrySelect({ value, onChange }) {
   )
 }
 
-export default function CompaniesPage() {
+export default function CompaniesPage({ initialType = 'all' }) {
   const [companies, setCompanies] = useState([])
   const [selected, setSelected] = useState(null)
   const [showNew, setShowNew] = useState(false)
   const [search, setSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState('all')
-  const [f, setF] = useState({ name: '', brand_name: '', type: 'grower', country: '', city: '', email: '', phone: '' })
+  const [typeFilter, setTypeFilter] = useState(initialType)
+  const [f, setF] = useState({ name: '', brand_name: '', type: initialType === 'all' ? 'grower' : initialType, country: '', city: '', email: '', phone: '' })
   const [saving, setSaving] = useState(false)
   const set = (k, v) => setF(p => ({ ...p, [k]: v }))
+
+  useEffect(() => {
+    setTypeFilter(initialType)
+    setF(p => ({ ...p, type: initialType === 'all' ? 'grower' : initialType }))
+  }, [initialType])
 
   useEffect(() => {
     supabase.from('companies').select('*').order('name').then(({ data }) => setCompanies(data || []))

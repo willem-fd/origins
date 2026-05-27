@@ -277,7 +277,7 @@ function FarmBlock({ block, blockIndex, farms, products, onUpdate, onDelete, onA
       const { data } = await supabase
         .from('grower_products')
         .select('product_id')
-        .eq('grower_id', block.farmId)
+        .eq('company_id', block.farmId)
       if (data && data.length > 0) {
         const ids = new Set(data.map(gp => gp.product_id))
         setGrowerProducts(products.filter(p => ids.has(p.id)))
@@ -482,7 +482,7 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
       // Group by farm then box_nr
       const farmMap = {}
       data.forEach(po => {
-        const fid = po.farm_id || 'open'
+        const fid = po.grower_company_id || 'open'
         const grower = farms.find(f => f.id === fid)
         const fname = grower?.name || '— Open market'
         const fcode = grower?.code || ''
@@ -492,7 +492,7 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
         farmMap[fid].boxes[bn].rows.push({
           _id: po.id,
           isNew: false,
-          farm_id: po.farm_id,
+          farm_id: po.grower_company_id,
           box_nr: po.box_nr,
           boxmark: po.boxmark,
           box_type: po.box_type,
@@ -562,7 +562,7 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
             dbId: row.isNew ? null : row._id,
             payload: {
               shipment_id: shipmentId,
-              farm_id: block.farmId === 'open' ? null : block.farmId,
+              grower_company_id: block.farmId === 'open' ? null : block.farmId,
               product_id: row.product_id || null,
               order_type: row.order_type,
               status: row.status,
