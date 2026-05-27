@@ -91,7 +91,9 @@ export const CSS = `
   }
   .topbar-title { font-size: 15px; font-weight: 500; color: var(--text-1); flex: 1; }
   .topbar-sub { font-size: 13px; color: var(--text-3); margin-left: 8px; font-weight: 400; }
-  .page { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 18px; -webkit-overflow-scrolling: touch; }
+  .page { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 28px 40px; display: block; -webkit-overflow-scrolling: touch; }
+  .page > * { margin-bottom: 18px; }
+  .page > *:last-child { margin-bottom: 0; }
 
   /* BUTTONS */
   .btn {
