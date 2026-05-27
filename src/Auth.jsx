@@ -12,9 +12,10 @@ import { supabase } from './supabase'
 // We detect "reset" mode automatically from the URL (?type=recovery).
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function Auth({ onLogin }) {
+export default function Auth({ onLogin, forceMode, onResetDone }) {
   // detect mode from URL hash/query — Supabase sends ?type=recovery in the link
   const initialMode = (() => {
+    if (forceMode) return forceMode
     const hash = window.location.hash || ''
     const search = window.location.search || ''
     if (hash.includes('type=recovery') || search.includes('type=recovery')) return 'reset'
@@ -22,6 +23,9 @@ export default function Auth({ onLogin }) {
   })()
 
   const [mode, setMode] = useState(initialMode)
+
+  // If the parent later tells us we're in recovery mode, switch into it.
+  useEffect(() => { if (forceMode) setMode(forceMode) }, [forceMode])
 
   return (
     <div className="auth-shell">
@@ -36,7 +40,7 @@ export default function Auth({ onLogin }) {
         </div>
         {mode === 'login'  && <LoginForm onLogin={onLogin} onForgot={() => setMode('forgot')} />}
         {mode === 'forgot' && <ForgotForm onBack={() => setMode('login')} />}
-        {mode === 'reset'  && <ResetForm onDone={() => { window.history.replaceState({}, '', '/'); setMode('login') }} />}
+        {mode === 'reset'  && <ResetForm onDone={() => { window.history.replaceState({}, '', '/'); onResetDone ? onResetDone() : setMode('login') }} />}
       </div>
       <footer className="auth-foot">
         <span>© Origins · A platform for flower trade</span>
@@ -215,7 +219,7 @@ function ResetForm({ onDone }) {
       <div className="auth-form" aria-live="polite">
         <div className="auth-tick">{tickIcon}</div>
         <h1 className="auth-title" style={{ marginTop: 14 }}>Password updated</h1>
-        <p className="auth-sub">Redirecting you to sign in&hellip;</p>
+        <p className="auth-sub">Taking you to Origins&hellip;</p>
       </div>
     )
   }

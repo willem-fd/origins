@@ -771,6 +771,7 @@ function ComingSoon({ icon, title, sub }) {
 export default function App() {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
+  const [recoveryMode, setRecoveryMode] = useState(false)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState('shipments')
   const [shipments, setShipments] = useState([])
@@ -782,7 +783,10 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => { setUser(session?.user ?? null); setLoading(false) })
-    supabase.auth.onAuthStateChange((_, session) => setUser(session?.user ?? null))
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') setRecoveryMode(true)
+      setUser(session?.user ?? null)
+    })
   }, [])
 
   // Load the user's row from public.users (links the auth login to a company + role + super-admin flag)
@@ -832,6 +836,7 @@ export default function App() {
       ORIGINS
     </div>
   )
+  if (recoveryMode) return <><style>{CSS}</style><Auth forceMode="reset" onResetDone={() => setRecoveryMode(false)} onLogin={setUser} /></>
   if (!user) return <><style>{CSS}</style><Auth onLogin={setUser} /></>
 
   return (
