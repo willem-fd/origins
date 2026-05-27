@@ -30,7 +30,7 @@ export const CSS = `
   body { font-family: var(--font); background: var(--surface-2); color: var(--text-1); }
   input, select, textarea, button { font-family: var(--font); }
 
-  .app { display: flex; height: 100vh; overflow: hidden; }
+  .app { display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
 
   /* SIDEBAR */
   .sidebar {
@@ -91,7 +91,7 @@ export const CSS = `
   }
   .topbar-title { font-size: 15px; font-weight: 500; color: var(--text-1); flex: 1; }
   .topbar-sub { font-size: 13px; color: var(--text-3); margin-left: 8px; font-weight: 400; }
-  .page { flex: 1; overflow-y: auto; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; }
+  .page { flex: 1; overflow-y: auto; padding: 24px 28px 64px; display: flex; flex-direction: column; gap: 18px; -webkit-overflow-scrolling: touch; }
 
   /* BUTTONS */
   .btn {
