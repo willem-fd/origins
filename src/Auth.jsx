@@ -98,7 +98,7 @@ function LoginForm({ onLogin, onForgot }) {
         value={pw}
         onChange={setPw}
         autoComplete="current-password"
-        placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
+        placeholder="••••••••"
         required
         trailing={
           <button type="button" className="auth-eye" onClick={() => setShowPw(s => !s)} tabIndex={-1} aria-label={showPw ? 'Hide password' : 'Show password'}>
