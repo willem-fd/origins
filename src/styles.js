@@ -38,7 +38,9 @@ export const CSS = `
     display: flex; flex-direction: column;
   }
   .sidebar-logo {
+    padding: 22px 18px 18px;
     border-bottom: 0.5px solid rgba(255,255,255,0.07);
+    cursor: pointer;
     transition: opacity 0.15s;
   }
   .sidebar-logo:hover { opacity: 0.8; }
