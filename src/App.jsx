@@ -169,7 +169,7 @@ function ViewAsBanner({ company, onSwitch, onExit }) {
 }
 
 // ── Shipment Form (shared by New + Edit) ──────────────────────────────────────
-function ShipmentForm({ initial, logistics, onClose, onSave, title }) {
+function ShipmentForm({ initial, logistics, buyerCompanyId, onClose, onSave, title }) {
   const airlines     = logistics.filter(l => l.type === 'airline')
   const cargoAgents  = logistics.filter(l => l.type === 'cargo_agent')
   const customsAgents= logistics.filter(l => l.type === 'customs_agent')
@@ -205,7 +205,9 @@ function ShipmentForm({ initial, logistics, onClose, onSave, title }) {
     if (initial?.id) {
       ;({ data, error } = await supabase.from('shipments').update(payload).eq('id', initial.id).select().single())
     } else {
-      ;({ data, error } = await supabase.from('shipments').insert([{ ...payload, status: 'draft' }]).select().single())
+      ;({ data, error } = await supabase.from('shipments')
+          .insert([{ ...payload, status: 'draft', buyer_company_id: buyerCompanyId || null }])
+          .select().single())
     }
     setSaving(false)
     if (error) { setErr(error.message); return }
@@ -645,6 +647,7 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
           title="Edit Shipment"
           initial={s}
           logistics={logistics}
+          buyerCompanyId={s.buyer_company_id}
           onClose={() => setShowEdit(false)}
           onSave={handleEdit}
         />
@@ -1038,6 +1041,7 @@ export default function App() {
         <ShipmentForm
           title="New Shipment"
           logistics={logistics}
+          buyerCompanyId={effectiveProfile?.company_id || null}
           onClose={() => setShowNewShipment(false)}
           onSave={handleNewShipment}
         />
