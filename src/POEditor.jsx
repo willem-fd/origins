@@ -340,7 +340,7 @@ function FarmBlock({ block, blockIndex, farms, products, onUpdate, onDelete, onA
   }
 
   const deleteBox = (boxIdx) => {
-    if (block.boxes.length === 1) return // keep at least one
+    if (block.boxes.length === 1) { onDelete(block.farmId); return } // last box → remove the grower block
     const boxes = block.boxes.filter((_, i) => i !== boxIdx)
     onUpdate({ ...block, boxes })
   }
