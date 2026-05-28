@@ -530,9 +530,10 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
             <POEditor
               shipmentId={s.id}
               companyId={companyId}
+              status={s.status}
               farms={growers}
               products={products}
-              onFirstLineAdded={() => s.status === 'draft' && updateStatus('active')}
+              onStartPurchasing={s.status === 'draft' ? () => updateStatus('active') : null}
               onClosePurchasing={s.status === 'active' ? () => setConfirmClose(true) : null}
             />
           </div>

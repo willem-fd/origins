@@ -458,7 +458,7 @@ function FarmBlock({ block, blockIndex, farms, products, onUpdate, onDelete, onA
 }
 
 // ── Main PO Editor ───────────────────────────────────────────────────────────
-export default function POEditor({ shipmentId, companyId, farms, products, onFirstLineAdded, onClosePurchasing }) {
+export default function POEditor({ shipmentId, companyId, status, farms, products, onStartPurchasing, onClosePurchasing }) {
   const [blocks, setBlocks] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -528,13 +528,12 @@ export default function POEditor({ shipmentId, companyId, farms, products, onFir
       .from('po_template_items').select('*').eq('template_id', templateId).order('sort_order')
     if (items && items.length) {
       await supabase.from('purchase_orders').insert(templateItemsToPOPayloads(items, shipmentId))
-      if (onFirstLineAdded) onFirstLineAdded()
     }
     setShowLoadTpl(false)
     await loadPOs()
     setTplMsg(items?.length ? `Loaded ${items.length} lines from template.` : 'That template had no lines.')
     setTimeout(() => setTplMsg(''), 3000)
-  }, [shipmentId, loadPOs, onFirstLineAdded])
+  }, [shipmentId, loadPOs])
 
   // Auto-save with debounce
   const autoSave = useCallback((newBlocks) => {
@@ -561,8 +560,6 @@ export default function POEditor({ shipmentId, companyId, farms, products, onFir
     setBlocks(nb)
     setShowAddFarm(false)
     autoSave(nb)
-    // Trigger status → Active when first grower is added
-    if (blocks.length === 0 && onFirstLineAdded) onFirstLineAdded()
   }
 
   // Save all to DB
@@ -700,15 +697,22 @@ export default function POEditor({ shipmentId, companyId, farms, products, onFir
           {saved && <span style={{ fontSize: 12, color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 5 }}><i className="ti ti-check" />Saved</span>}
           {saving && <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Saving…</span>}
           {tplMsg && <span style={{ fontSize: 12, color: 'var(--brown)' }}>{tplMsg}</span>}
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowLoadTpl(true)}>
-            <i className="ti ti-template" aria-hidden="true" /> Load template
-          </button>
+          {status === 'draft' && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowLoadTpl(true)}>
+              <i className="ti ti-template" aria-hidden="true" /> Load template
+            </button>
+          )}
           <button className="btn btn-ghost btn-sm" onClick={() => setShowSaveTpl(true)} disabled={blocks.length === 0}>
             <i className="ti ti-device-floppy" aria-hidden="true" /> Save as template
           </button>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowAddFarm(true)}>
             <i className="ti ti-building-factory" aria-hidden="true" /> Add grower
           </button>
+          {status === 'draft' && onStartPurchasing && (
+            <button className="btn btn-primary btn-sm" onClick={onStartPurchasing} disabled={blocks.length === 0} title={blocks.length === 0 ? 'Add at least one grower first' : 'Send this list to growers and begin negotiation'}>
+              <i className="ti ti-send" aria-hidden="true" /> Start purchasing
+            </button>
+          )}
           {onClosePurchasing && (
             <button className="btn btn-primary btn-sm" onClick={onClosePurchasing}>
               <i className="ti ti-lock" aria-hidden="true" /> Close purchasing
