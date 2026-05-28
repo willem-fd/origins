@@ -708,16 +708,15 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
           <button className="btn btn-ghost btn-sm" onClick={() => setShowAddFarm(true)}>
             <i className="ti ti-building-factory" aria-hidden="true" /> Add grower
           </button>
-          {status === 'draft' && onStartPurchasing && (
+          {status === 'draft' && onStartPurchasing ? (
             <button className="btn btn-primary btn-sm" onClick={onStartPurchasing} disabled={blocks.length === 0} title={blocks.length === 0 ? 'Add at least one grower first' : 'Send this list to growers and begin negotiation'}>
               <i className="ti ti-send" aria-hidden="true" /> Start purchasing
             </button>
-          )}
-          {onClosePurchasing && (
+          ) : onClosePurchasing ? (
             <button className="btn btn-primary btn-sm" onClick={onClosePurchasing}>
               <i className="ti ti-lock" aria-hidden="true" /> Close purchasing
             </button>
-          )}
+          ) : null}
         </div>
 
         {blocks.length === 0 ? (
