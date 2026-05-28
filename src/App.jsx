@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import { CSS } from './styles'
 import POEditor from './POEditor'
 import CompaniesPage from './CompaniesPage'
+import TemplatesPage from './Templates'
 import Auth from './Auth'
 import { COUNTRIES, SHIP_STATUSES, STATUS_LABELS, STATUS_BADGE, flag, fmt, validateEmail, validatePhone } from './constants'
 
@@ -384,7 +385,7 @@ function SplitShipmentModal({ shipmentId, shipments, onClose, onSplit }) {
 }
 
 // ── Shipment Detail ───────────────────────────────────────────────────────────
-function ShipmentDetail({ shipment, growers, products, logistics, allShipments, onBack, onUpdate, onDelete }) {
+function ShipmentDetail({ shipment, growers, products, logistics, allShipments, companyId, onBack, onUpdate, onDelete }) {
   const [tab, setTab] = useState('orders')
   const [s, setS] = useState(shipment)
   const [showEdit, setShowEdit] = useState(false)
@@ -528,6 +529,7 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
           <div style={{ padding: 16 }}>
             <POEditor
               shipmentId={s.id}
+              companyId={companyId}
               farms={growers}
               products={products}
               onFirstLineAdded={() => s.status === 'draft' && updateStatus('active')}
@@ -1007,6 +1009,7 @@ export default function App() {
                 products={products}
                 logistics={logistics}
                 allShipments={shipments}
+                companyId={effectiveProfile?.company_id || null}
                 onBack={() => setSelectedShipment(null)}
                 onUpdate={handleShipmentUpdate}
                 onDelete={handleShipmentDelete}
@@ -1016,7 +1019,7 @@ export default function App() {
             {page === 'logistics' && <CompaniesPage initialType="logistics" />}
             {page === 'companies' && <CompaniesPage />}
             {page === 'products' && <ProductsPage products={products} />}
-            {page === 'templates' && <ComingSoon icon="template" title="PO Templates" sub="Save and reuse purchase order lists — coming next" />}
+            {page === 'templates' && <TemplatesPage companyId={effectiveProfile?.company_id || null} />}
             {page === 'statements' && <ComingSoon icon="file-invoice" title="Account Statements" sub="Monthly farm payment reconciliation — coming next" />}
             {page === 'claims' && <ComingSoon icon="alert-triangle" title="Claims & Credit Notes" sub="Quality claims management — coming next" />}
             {page === 'users' && <ComingSoon icon="users" title={accountType === 'buyer' ? 'Team' : 'Users'} sub="User management — coming next" />}

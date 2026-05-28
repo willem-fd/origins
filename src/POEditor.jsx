@@ -10,6 +10,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS as DndCSS } from '@dnd-kit/utilities'
 import { supabase } from './supabase'
+import { SaveTemplateModal, LoadTemplateModal, templateItemsToPOPayloads } from './Templates'
 
 const STATUSES = [
   { key: 'pending',      label: 'Pending',     cls: 'status-pending' },
@@ -457,27 +458,30 @@ function FarmBlock({ block, blockIndex, farms, products, onUpdate, onDelete, onA
 }
 
 // ── Main PO Editor ───────────────────────────────────────────────────────────
-export default function POEditor({ shipmentId, farms, products, onFirstLineAdded, onClosePurchasing }) {
+export default function POEditor({ shipmentId, companyId, farms, products, onFirstLineAdded, onClosePurchasing }) {
   const [blocks, setBlocks] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showAddFarm, setShowAddFarm] = useState(false)
   const [activeId, setActiveId] = useState(null)
+  const [showSaveTpl, setShowSaveTpl] = useState(false)
+  const [showLoadTpl, setShowLoadTpl] = useState(false)
+  const [tplMsg, setTplMsg] = useState('')
   const saveTimer = useRef(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
-  // Load existing POs from DB
-  useEffect(() => {
-    const load = async () => {
+  // Load existing POs from DB (reusable so we can refresh after applying a template)
+  const loadPOs = useCallback(async () => {
+      setLoading(true)
       const { data } = await supabase
         .from('purchase_orders')
         .select('*, products(id,name,vbn_code)')
         .eq('shipment_id', shipmentId)
         .order('sort_order')
 
-      if (!data || data.length === 0) { setLoading(false); return }
+      if (!data || data.length === 0) { setBlocks([]); setLoading(false); return }
 
       // Group by farm then box_nr
       const farmMap = {}
@@ -514,9 +518,23 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
       }))
       setBlocks(blockArr)
       setLoading(false)
+  }, [shipmentId, farms])
+
+  useEffect(() => { loadPOs() }, [loadPOs])
+
+  // Apply a template's lines to this shipment, then refresh
+  const applyTemplate = useCallback(async (templateId) => {
+    const { data: items } = await supabase
+      .from('po_template_items').select('*').eq('template_id', templateId).order('sort_order')
+    if (items && items.length) {
+      await supabase.from('purchase_orders').insert(templateItemsToPOPayloads(items, shipmentId))
+      if (onFirstLineAdded) onFirstLineAdded()
     }
-    load()
-  }, [shipmentId])
+    setShowLoadTpl(false)
+    await loadPOs()
+    setTplMsg(items?.length ? `Loaded ${items.length} lines from template.` : 'That template had no lines.')
+    setTimeout(() => setTplMsg(''), 3000)
+  }, [shipmentId, loadPOs, onFirstLineAdded])
 
   // Auto-save with debounce
   const autoSave = useCallback((newBlocks) => {
@@ -681,6 +699,13 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
           </span>
           {saved && <span style={{ fontSize: 12, color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 5 }}><i className="ti ti-check" />Saved</span>}
           {saving && <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Saving…</span>}
+          {tplMsg && <span style={{ fontSize: 12, color: 'var(--brown)' }}>{tplMsg}</span>}
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowLoadTpl(true)}>
+            <i className="ti ti-template" aria-hidden="true" /> Load template
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowSaveTpl(true)} disabled={blocks.length === 0}>
+            <i className="ti ti-device-floppy" aria-hidden="true" /> Save as template
+          </button>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowAddFarm(true)}>
             <i className="ti ti-building-factory" aria-hidden="true" /> Add grower
           </button>
@@ -763,6 +788,22 @@ export default function POEditor({ shipmentId, farms, products, onFirstLineAdded
             </div>
           </div>
         </div>
+      )}
+
+      {showSaveTpl && (
+        <SaveTemplateModal
+          companyId={companyId}
+          blocks={blocks}
+          onClose={() => setShowSaveTpl(false)}
+          onSaved={(m) => { setShowSaveTpl(false); setTplMsg(m); setTimeout(() => setTplMsg(''), 3000) }}
+        />
+      )}
+      {showLoadTpl && (
+        <LoadTemplateModal
+          companyId={companyId}
+          onApply={applyTemplate}
+          onClose={() => setShowLoadTpl(false)}
+        />
       )}
     </DndContext>
   )
