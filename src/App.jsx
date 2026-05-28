@@ -886,7 +886,8 @@ export default function App() {
   // Load the user's row from public.users (links the auth login to a company + role + super-admin flag)
   useEffect(() => {
     if (!user) { setProfile(null); return }
-    supabase.from('users').select('*').eq('id', user.id).maybeSingle().then(({ data }) => setProfile(data || null))
+    supabase.from('users').select('*, companies(type)').eq('id', user.id).maybeSingle()
+      .then(({ data }) => setProfile(data ? { ...data, account_type: data.companies?.type || null } : null))
   }, [user])
 
   useEffect(() => {
