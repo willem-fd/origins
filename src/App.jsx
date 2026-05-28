@@ -25,55 +25,143 @@ function CountrySelect({ value, onChange, className = 'form-select', placeholder
   )
 }
 
+// ── Account-type navigation ───────────────────────────────────────────────────
+// Each account type sees a different app. Super admin sees everything; buyer,
+// grower and logistics each get their own tailored navigation.
+const ACCOUNT_LABELS = { super: 'Super admin', buyer: 'Buyer', grower: 'Grower', logistics: 'Logistics' }
+
+const NAV = {
+  super: [
+    { label: 'Overview',   items: [['dashboard', 'layout-dashboard', 'Dashboard']] },
+    { label: 'Purchasing', items: [['shipments', 'plane', 'Shipments'], ['templates', 'template', 'PO Templates']] },
+    { label: 'Relations',  items: [['growers', 'plant', 'Growers'], ['logistics', 'truck', 'Logistics'], ['companies', 'building', 'Companies']] },
+    { label: 'Finance',    items: [['statements', 'file-invoice', 'Account Statements'], ['claims', 'alert-triangle', 'Claims']] },
+    { label: 'Admin',      items: [['products', 'flower', 'Products'], ['users', 'users', 'Users'], ['settings', 'settings', 'Settings']] },
+  ],
+  buyer: [
+    { label: 'Overview',   items: [['dashboard', 'layout-dashboard', 'Dashboard']] },
+    { label: 'Purchasing', items: [['shipments', 'plane', 'Shipments'], ['templates', 'template', 'PO Templates']] },
+    { label: 'Relations',  items: [['growers', 'plant', 'Growers'], ['logistics', 'truck', 'Logistics']] },
+    { label: 'Finance',    items: [['statements', 'file-invoice', 'Account Statements'], ['claims', 'alert-triangle', 'Claims']] },
+    { label: 'Account',    items: [['users', 'users', 'Team'], ['settings', 'settings', 'Settings']] },
+  ],
+  grower: [
+    { label: 'Overview', items: [['dashboard', 'layout-dashboard', 'Dashboard']] },
+    { label: 'Orders',   items: [['shipments', 'plane', 'Orders']] },
+    { label: 'Finance',  items: [['invoices', 'file-invoice', 'Invoices'], ['statements', 'file-invoice', 'Statements']] },
+    { label: 'Account',  items: [['settings', 'settings', 'Settings']] },
+  ],
+  logistics: [
+    { label: 'Overview',   items: [['dashboard', 'layout-dashboard', 'Dashboard']] },
+    { label: 'Logistics',  items: [['shipments', 'plane', 'Assigned Shipments'], ['documents', 'file', 'Documents']] },
+    { label: 'Account',    items: [['settings', 'settings', 'Settings']] },
+  ],
+}
+
 // ── Sidebar ───────────────────────────────────────────────────────────────────
-function Sidebar({ page, setPage, user, profile, pendingCount, onSignOut }) {
-  const ni = (id, icon, label, badge) => (
-    <div className={`nav-item${page === id ? ' active' : ''}`} onClick={() => setPage(id)}>
+function Sidebar({ page, setPage, profile, accountType, pendingCount, onSignOut, showViewAs, onOpenViewAs }) {
+  const sections = NAV[accountType] || NAV.buyer
+  const ni = (id, icon, label) => (
+    <div key={id} className={`nav-item${page === id ? ' active' : ''}`} onClick={() => setPage(id)}>
       <i className={`ti ti-${icon}`} aria-hidden="true" />{label}
-      {badge != null && <span className="nav-badge">{badge}</span>}
+      {id === 'shipments' && pendingCount ? <span className="nav-badge">{pendingCount}</span> : null}
     </div>
   )
+  const roleText = profile?.is_super_admin ? 'Super admin'
+    : (profile?.role === 'admin' ? 'Admin' : 'Member')
   return (
     <div className="sidebar">
       <div className="sidebar-logo" onClick={() => setPage('dashboard')}>
         <img src="/origins-logo.svg" alt="Origins" style={{ width: 130, height: 'auto' }} />
       </div>
       <div className="sidebar-nav">
-        <div className="nav-section">
-          <div className="nav-label">Overview</div>
-          {ni('dashboard', 'layout-dashboard', 'Dashboard')}
-        </div>
-        <div className="nav-section">
-          <div className="nav-label">Purchasing</div>
-          {ni('shipments', 'plane', 'Shipments', pendingCount || undefined)}
-          {ni('templates', 'template', 'PO Templates')}
-        </div>
-        <div className="nav-section">
-          <div className="nav-label">Relations</div>
-          {ni('growers', 'plant', 'Growers')}
-          {ni('logistics', 'truck', 'Logistics')}
-          {ni('companies', 'building', 'Companies')}
-        </div>
-        <div className="nav-section">
-          <div className="nav-label">Finance</div>
-          {ni('statements', 'file-invoice', 'Account Statements')}
-          {ni('claims', 'alert-triangle', 'Claims')}
-        </div>
-        <div className="nav-section">
-          <div className="nav-label">Admin</div>
-          {ni('products', 'flower', 'Products')}
-          {ni('users', 'users', 'Users')}
-          {ni('settings', 'settings', 'Settings')}
-        </div>
+        {sections.map(sec => (
+          <div className="nav-section" key={sec.label}>
+            <div className="nav-label">{sec.label}</div>
+            {sec.items.map(([id, icon, label]) => ni(id, icon, label))}
+          </div>
+        ))}
       </div>
       <div className="sidebar-footer">
+        {showViewAs && (
+          <div className="nav-item" style={{ marginBottom: 6 }} onClick={onOpenViewAs}>
+            <i className="ti ti-eye" aria-hidden="true" />View as company…
+          </div>
+        )}
         <div className="user-row" onClick={onSignOut}>
-          <div className="avatar">{((profile?.full_name || user?.email || 'U')).slice(0, 2).toUpperCase()}</div>
+          <div className="avatar">{((profile?.full_name || 'U')).slice(0, 2).toUpperCase()}</div>
           <div>
-            <div className="user-name">{profile?.full_name || user?.email?.split('@')[0]}</div>
-            <div className="user-role">{profile?.is_super_admin ? 'Super admin' : (profile?.role === 'admin' ? 'Admin' : 'Member')} · sign out</div>
+            <div className="user-name">{profile?.full_name || 'User'}</div>
+            <div className="user-role">{roleText} · sign out</div>
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── View-as: company picker (super admin only) ────────────────────────────────
+function ViewAsModal({ companies, onPick, onClose }) {
+  const [q, setQ] = useState('')
+  const [tf, setTf] = useState('all')
+  const list = companies.filter(c => {
+    const ql = q.toLowerCase()
+    const mq = !q || c.name.toLowerCase().includes(ql) || (c.brand_name || '').toLowerCase().includes(ql)
+    const mt = tf === 'all' || c.type === tf
+    return mq && mt
+  })
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <div className="modal-title"><i className="ti ti-eye" aria-hidden="true" /> View as company</div>
+          <div className="btn-icon" onClick={onClose}><i className="ti ti-x" aria-hidden="true" /></div>
+        </div>
+        <div className="modal-body">
+          <input className="form-input" placeholder="Search companies…" value={q} onChange={e => setQ(e.target.value)} />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {['all', 'buyer', 'grower', 'logistics'].map(t => (
+              <div key={t} className={`filter-chip${tf === t ? ' active' : ''}`} onClick={() => setTf(t)}>
+                {t === 'all' ? 'All' : ACCOUNT_LABELS[t]}
+              </div>
+            ))}
+          </div>
+          <div style={{ maxHeight: 360, overflowY: 'auto', margin: '0 -4px' }}>
+            {list.length === 0 && <div className="empty-sub" style={{ padding: '20px 4px', color: 'var(--text-3)' }}>No companies found.</div>}
+            {list.map(c => (
+              <div
+                key={c.id}
+                onClick={() => onPick(c)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 8, cursor: 'pointer' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <div>
+                  <div style={{ fontWeight: 500 }}>{c.brand_name || c.name}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{ACCOUNT_LABELS[c.type] || c.type}</div>
+                </div>
+                <i className="ti ti-arrow-right" style={{ color: 'var(--text-3)' }} aria-hidden="true" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── View-as: persistent banner while impersonating ────────────────────────────
+function ViewAsBanner({ company, onSwitch, onExit }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12, padding: '8px 20px',
+      background: 'var(--brown)', color: '#fff', fontSize: 13, fontWeight: 500,
+    }}>
+      <i className="ti ti-eye" aria-hidden="true" />
+      <span>Viewing as <strong>{company.brand_name || company.name}</strong> · {ACCOUNT_LABELS[company.type] || company.type}</span>
+      <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+        <button className="btn btn-xs" style={{ background: 'rgba(255,255,255,0.18)', color: '#fff' }} onClick={onSwitch}>Switch</button>
+        <button className="btn btn-xs" style={{ background: '#fff', color: 'var(--brown-dark)' }} onClick={onExit}>Exit view</button>
       </div>
     </div>
   )
@@ -780,6 +868,9 @@ export default function App() {
   const [logistics, setLogistics] = useState([])
   const [selectedShipment, setSelectedShipment] = useState(null)
   const [showNewShipment, setShowNewShipment] = useState(false)
+  const [companies, setCompanies] = useState([])   // all companies, for the super-admin "view as" picker
+  const [viewAs, setViewAs] = useState(null)        // company being impersonated (null = real super-admin)
+  const [showViewAs, setShowViewAs] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => { setUser(session?.user ?? null); setLoading(false) })
@@ -801,6 +892,7 @@ export default function App() {
     supabase.from('companies').select('*').eq('type', 'grower').order('name').then(({ data }) => setGrowers(data || []))
     supabase.from('products').select('*').order('name').then(({ data }) => setProducts(data || []))
     supabase.from('companies').select('*').eq('type', 'logistics').order('name').then(({ data }) => setLogistics(data || []))
+    supabase.from('companies').select('id, name, brand_name, type').order('name').then(({ data }) => setCompanies(data || []))
   }, [user])
 
   const handleSignOut = async () => { await supabase.auth.signOut(); setUser(null); setProfile(null) }
@@ -824,12 +916,51 @@ export default function App() {
   const navPage = p => { setPage(p); setSelectedShipment(null) }
   const pendingCount = shipments.filter(s => ['draft', 'active', 'in_transit'].includes(s.status)).length
 
+  // ── Effective identity ──────────────────────────────────────────────────────
+  // Super admin can "view as" any company. While impersonating, the whole app
+  // behaves as that company's account type. realIsSuper stays true so the exit
+  // controls remain available.
+  const realIsSuper = !!profile?.is_super_admin
+  const effectiveProfile = viewAs
+    ? { full_name: viewAs.brand_name || viewAs.name, role: 'admin', is_super_admin: false, company_id: viewAs.id }
+    : profile
+  const accountType = viewAs ? viewAs.type : (realIsSuper ? 'super' : (profile?.account_type || 'buyer'))
+
+  const enterViewAs = c => { setViewAs(c); setShowViewAs(false); setSelectedShipment(null); setPage('dashboard') }
+  const exitViewAs = () => { setViewAs(null); setSelectedShipment(null); setPage('shipments') }
+
   const topTitles = {
     dashboard: 'Dashboard', shipments: 'Shipments', templates: 'PO Templates',
     growers: 'Growers', logistics: 'Logistics Partners',
     statements: 'Account Statements', claims: 'Claims & Credit Notes',
     products: 'Product Catalogue', users: 'Users', settings: 'Settings', companies: 'Companies'
   }
+
+  // Tailored grower/logistics portal pages. These are scaffolds until Wave 3/4 and
+  // the RLS pass are done — they intentionally do NOT show buyer-wide data.
+  const PORTAL = {
+    grower: {
+      title: { dashboard: 'Dashboard', shipments: 'Orders', invoices: 'Invoices', statements: 'Statements', settings: 'Settings' },
+      page: {
+        dashboard:  { icon: 'layout-dashboard', title: 'Grower Dashboard', sub: 'Your orders, confirmations and statements at a glance' },
+        shipments:  { icon: 'plane', title: 'Your Orders', sub: 'Purchase orders from your buyers — confirm, counter or cancel each line (Wave 3)' },
+        invoices:   { icon: 'file-invoice', title: 'Invoices', sub: 'Upload your invoices; Origins extracts the data automatically (Wave 3)' },
+        statements: { icon: 'file-invoice', title: 'Statements', sub: 'Your account statement per buyer (Wave 3)' },
+        settings:   { icon: 'settings', title: 'Settings', sub: 'Your company profile and team' },
+      },
+    },
+    logistics: {
+      title: { dashboard: 'Dashboard', shipments: 'Assigned Shipments', documents: 'Documents', settings: 'Settings' },
+      page: {
+        dashboard: { icon: 'layout-dashboard', title: 'Logistics Dashboard', sub: 'Shipments assigned to you, at a glance' },
+        shipments: { icon: 'plane', title: 'Assigned Shipments', sub: "Shipments you're handling — box and grower counts, drop dates (Wave 4)" },
+        documents: { icon: 'file', title: 'Documents', sub: 'Upload AWBs and shipping docs; Origins extracts AWB, weights and costs (Wave 4)' },
+        settings:  { icon: 'settings', title: 'Settings', sub: 'Your company profile and team' },
+      },
+    },
+  }
+  const isPortal = accountType === 'grower' || accountType === 'logistics'
+  const pageTitle = (isPortal && PORTAL[accountType].title[page]) || topTitles[page] || page
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--green-deep)', color: '#996633', fontSize: 20, letterSpacing: '0.24em' }}>
@@ -843,16 +974,30 @@ export default function App() {
     <>
       <style>{CSS}</style>
       <div className="app">
-        <Sidebar page={selectedShipment ? 'shipments' : page} setPage={navPage} user={user} profile={profile} pendingCount={pendingCount} onSignOut={handleSignOut} />
+        <Sidebar
+          page={selectedShipment ? 'shipments' : page}
+          setPage={navPage}
+          profile={effectiveProfile}
+          accountType={accountType}
+          pendingCount={isPortal ? 0 : pendingCount}
+          onSignOut={handleSignOut}
+          showViewAs={realIsSuper && !viewAs}
+          onOpenViewAs={() => setShowViewAs(true)}
+        />
         <div className="main">
+          {viewAs && <ViewAsBanner company={viewAs} onSwitch={() => setShowViewAs(true)} onExit={exitViewAs} />}
           <div className="topbar">
             <div className="topbar-title">
-              {selectedShipment
+              {!isPortal && selectedShipment
                 ? <>{selectedShipment.mawb || 'Shipment'} <span className="topbar-sub">{selectedShipment.origin_airport} → {selectedShipment.destination_airport}</span></>
-                : topTitles[page]}
+                : pageTitle}
             </div>
           </div>
           <div className="page">
+            {isPortal ? (
+              <ComingSoon {...(PORTAL[accountType].page[page] || PORTAL[accountType].page.dashboard)} />
+            ) : (
+            <>
             {page === 'dashboard' && !selectedShipment && <DashboardPage shipments={shipments} logistics={logistics} />}
             {page === 'shipments' && !selectedShipment && <ShipmentsPage shipments={shipments} logistics={logistics} onSelect={s => { setSelectedShipment(s); setPage('shipments') }} onNew={() => setShowNewShipment(true)} />}
             {page === 'shipments' && selectedShipment && (
@@ -874,11 +1019,16 @@ export default function App() {
             {page === 'templates' && <ComingSoon icon="template" title="PO Templates" sub="Save and reuse purchase order lists — coming next" />}
             {page === 'statements' && <ComingSoon icon="file-invoice" title="Account Statements" sub="Monthly farm payment reconciliation — coming next" />}
             {page === 'claims' && <ComingSoon icon="alert-triangle" title="Claims & Credit Notes" sub="Quality claims management — coming next" />}
-            {page === 'users' && <ComingSoon icon="users" title="Users" sub="User management — coming next" />}
+            {page === 'users' && <ComingSoon icon="users" title={accountType === 'buyer' ? 'Team' : 'Users'} sub="User management — coming next" />}
             {page === 'settings' && <ComingSoon icon="settings" title="Settings" sub="Global settings — coming next" />}
+            </>
+            )}
           </div>
         </div>
       </div>
+      {showViewAs && (
+        <ViewAsModal companies={companies} onPick={enterViewAs} onClose={() => setShowViewAs(false)} />
+      )}
       {showNewShipment && (
         <ShipmentForm
           title="New Shipment"
