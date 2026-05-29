@@ -50,12 +50,14 @@ export function templateItemsToPOPayloads(items, shipmentId) {
 
 const scope = (q, companyId) => companyId ? q.eq('company_id', companyId) : q.is('company_id', null)
 
-// Load templates for a company with line + grower counts.
-async function loadTemplatesWithCounts(companyId) {
-  const { data: tpls } = await scope(
-    supabase.from('po_templates').select('*').order('created_at', { ascending: false }),
-    companyId
-  )
+// Load templates for a company with line + grower counts. When adminAll is true,
+// load every template across all companies (for super admin's own view) and include
+// the owning company's name.
+async function loadTemplatesWithCounts(companyId, adminAll = false) {
+  let query = supabase.from('po_templates')
+    .select(adminAll ? '*, companies(name, brand_name)' : '*')
+    .order('created_at', { ascending: false })
+  const { data: tpls } = adminAll ? await query : await scope(query, companyId)
   const list = tpls || []
   if (list.length === 0) return []
   const { data: items } = await supabase
@@ -72,6 +74,7 @@ async function loadTemplatesWithCounts(companyId) {
     ...t,
     lineCount: byTpl[t.id]?.lines || 0,
     growerCount: byTpl[t.id]?.growers.size || 0,
+    ownerName: t.companies?.brand_name || t.companies?.name || null,
   }))
 }
 
@@ -231,15 +234,15 @@ export function LoadTemplateModal({ companyId, onApply, onClose }) {
 }
 
 // ── Templates management page ─────────────────────────────────────────────────
-export default function TemplatesPage({ companyId }) {
+export default function TemplatesPage({ companyId, adminAll = false }) {
   const [list, setList] = useState(null)
   const [editing, setEditing] = useState(null)   // template id being renamed
   const [editName, setEditName] = useState('')
   const [confirmDel, setConfirmDel] = useState(null)
   const [msg, setMsg] = useState('')
 
-  const refresh = () => loadTemplatesWithCounts(companyId).then(setList)
-  useEffect(() => { refresh() }, [companyId])
+  const refresh = () => loadTemplatesWithCounts(companyId, adminAll).then(setList)
+  useEffect(() => { refresh() }, [companyId, adminAll])
 
   const startRename = (t) => { setEditing(t.id); setEditName(t.name) }
   const saveRename = async (t) => {
@@ -283,7 +286,14 @@ export default function TemplatesPage({ companyId }) {
                   />
                 ) : (
                   <>
-                    <div style={{ fontWeight: 500 }}>{t.name}</div>
+                    <div style={{ fontWeight: 500 }}>
+                      {t.name}
+                      {adminAll && t.ownerName && (
+                        <span style={{ marginLeft: 8, fontSize: 11.5, color: 'var(--brown)', fontWeight: 400 }}>
+                          · {t.ownerName}
+                        </span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 11.5, color: 'var(--text-3)' }}>
                       {t.growerCount} growers · {t.lineCount} lines{t.description ? ` · ${t.description}` : ''}
                     </div>

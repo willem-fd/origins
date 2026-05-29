@@ -667,7 +667,7 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
 }
 
 // ── Shipments List ────────────────────────────────────────────────────────────
-function ShipmentsPage({ shipments, logistics, onSelect, onNew }) {
+function ShipmentsPage({ shipments, logistics, companies, showBuyer, onSelect, onNew }) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
 
@@ -679,6 +679,11 @@ function ShipmentsPage({ shipments, logistics, onSelect, onNew }) {
   })
 
   const airline = id => logistics.find(l => l.id === id)?.name || '—'
+  const buyer   = id => {
+    if (!id) return <span style={{ color: 'var(--text-3)', fontStyle: 'italic', fontSize: 12 }}>untagged</span>
+    const c = (companies || []).find(c => c.id === id)
+    return c ? (c.brand_name || c.name) : '—'
+  }
 
   const counts = SHIP_STATUSES.reduce((acc, st) => {
     acc[st] = shipments.filter(s => s.status === st).length
@@ -714,7 +719,7 @@ function ShipmentsPage({ shipments, logistics, onSelect, onNew }) {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Route</th><th>AWB</th><th>Airline</th><th>Drop date</th><th>Departure</th><th>Est. Arrival</th><th>Status</th></tr>
+              <tr><th>Route</th>{showBuyer && <th>Buyer</th>}<th>AWB</th><th>Airline</th><th>Drop date</th><th>Departure</th><th>Est. Arrival</th><th>Status</th></tr>
             </thead>
             <tbody>
               {filtered.map(s => (
@@ -727,6 +732,7 @@ function ShipmentsPage({ shipments, logistics, onSelect, onNew }) {
                       <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{s.destination_airport}</span>
                     </span>
                   </td>
+                  {showBuyer && <td className="td-muted">{buyer(s.buyer_company_id)}</td>}
                   <td><span className="td-brown">{s.mawb || <span style={{ color: 'var(--text-3)', fontStyle: 'italic', fontSize: 12 }}>pending</span>}</span></td>
                   <td className="td-muted">{airline(s.airline_id)}</td>
                   <td className="td-mono">{s.drop_date || '—'}</td>
@@ -736,7 +742,7 @@ function ShipmentsPage({ shipments, logistics, onSelect, onNew }) {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={7}>
+                <tr><td colSpan={showBuyer ? 8 : 7}>
                   <div className="empty"><i className="ti ti-plane" /><div className="empty-title">No shipments found</div></div>
                 </td></tr>
               )}
@@ -908,14 +914,93 @@ export default function App() {
     return () => { cancelled = true }
   }, [user])
 
+  // Load shipments/companies/products. When viewAs is set we filter the same way RLS would for that
+  // user, so the experience mirrors what the impersonated buyer/grower/logistics would actually see.
   useEffect(() => {
     if (!user) return
-    supabase.from('shipments').select('*').order('created_at', { ascending: false }).then(({ data }) => setShipments(data || []))
-    supabase.from('companies').select('*').eq('type', 'grower').order('name').then(({ data }) => setGrowers(data || []))
-    supabase.from('products').select('*').order('name').then(({ data }) => setProducts(data || []))
-    supabase.from('companies').select('*').eq('type', 'logistics').order('name').then(({ data }) => setLogistics(data || []))
-    supabase.from('companies').select('id, name, brand_name, type').order('name').then(({ data }) => setCompanies(data || []))
-  }, [user])
+    let cancelled = false
+    ;(async () => {
+      let shipmentsData = []
+      let growersData = []
+      let logisticsData = []
+
+      // ── Shipments ──
+      let q = supabase.from('shipments').select('*').order('created_at', { ascending: false })
+      if (viewAs?.type === 'buyer') {
+        q = q.eq('buyer_company_id', viewAs.id)
+        const { data } = await q
+        if (cancelled) return
+        shipmentsData = data || []
+      } else if (viewAs?.type === 'grower') {
+        const { data: lines } = await supabase.from('purchase_orders')
+          .select('shipment_id').eq('grower_company_id', viewAs.id)
+        if (cancelled) return
+        const sIds = [...new Set((lines || []).map(l => l.shipment_id))]
+        if (sIds.length) {
+          const { data } = await q.in('id', sIds).neq('status', 'draft')
+          if (cancelled) return
+          shipmentsData = data || []
+        }
+      } else if (viewAs?.type === 'logistics') {
+        const orExpr = ['cargo_agent_id','airline_id','customs_agent_id','trucking_id','handling_id']
+          .map(c => `${c}.eq.${viewAs.id}`).join(',')
+        const { data } = await q.or(orExpr)
+        if (cancelled) return
+        shipmentsData = data || []
+      } else {
+        const { data } = await q
+        if (cancelled) return
+        shipmentsData = data || []
+      }
+
+      // ── Growers + Logistics lists ──
+      if (viewAs?.type === 'buyer') {
+        const { data: rels } = await supabase.from('company_relationships')
+          .select('partner_company_id, partner_type')
+          .eq('buyer_company_id', viewAs.id).eq('status', 'active')
+        if (cancelled) return
+        const gIds = (rels || []).filter(r => r.partner_type === 'grower').map(r => r.partner_company_id)
+        const lIds = (rels || []).filter(r => r.partner_type === 'logistics').map(r => r.partner_company_id)
+        if (gIds.length) {
+          const { data } = await supabase.from('companies').select('*').eq('type', 'grower').in('id', gIds).order('name')
+          if (cancelled) return
+          growersData = data || []
+        }
+        if (lIds.length) {
+          const { data } = await supabase.from('companies').select('*').eq('type', 'logistics').in('id', lIds).order('name')
+          if (cancelled) return
+          logisticsData = data || []
+        }
+      } else if (viewAs) {
+        // Grower / logistics portals don't use the buyer-style growers/logistics lists yet
+        growersData = []
+        logisticsData = []
+      } else {
+        // Super admin (no view-as) sees everything
+        const [gRes, lRes] = await Promise.all([
+          supabase.from('companies').select('*').eq('type', 'grower').order('name'),
+          supabase.from('companies').select('*').eq('type', 'logistics').order('name'),
+        ])
+        if (cancelled) return
+        growersData = gRes.data || []
+        logisticsData = lRes.data || []
+      }
+
+      // ── Products + companies-for-picker ──
+      const [pRes, cRes] = await Promise.all([
+        supabase.from('products').select('*').order('name'),
+        supabase.from('companies').select('id, name, brand_name, type').order('name'),
+      ])
+      if (cancelled) return
+
+      setShipments(shipmentsData)
+      setGrowers(growersData)
+      setLogistics(logisticsData)
+      setProducts(pRes.data || [])
+      setCompanies(cRes.data || [])
+    })()
+    return () => { cancelled = true }
+  }, [user, viewAs])
 
   const handleSignOut = async () => { await supabase.auth.signOut(); setUser(null); setProfile(null) }
 
@@ -1021,7 +1106,7 @@ export default function App() {
             ) : (
             <>
             {page === 'dashboard' && !selectedShipment && <DashboardPage shipments={shipments} logistics={logistics} />}
-            {page === 'shipments' && !selectedShipment && <ShipmentsPage shipments={shipments} logistics={logistics} onSelect={s => { setSelectedShipment(s); setPage('shipments') }} onNew={() => setShowNewShipment(true)} />}
+            {page === 'shipments' && !selectedShipment && <ShipmentsPage shipments={shipments} logistics={logistics} companies={companies} showBuyer={realIsSuper && !viewAs} onSelect={s => { setSelectedShipment(s); setPage('shipments') }} onNew={() => setShowNewShipment(true)} />}
             {page === 'shipments' && selectedShipment && (
               <ShipmentDetail
                 shipment={selectedShipment}
@@ -1039,7 +1124,7 @@ export default function App() {
             {page === 'logistics' && <CompaniesPage initialType="logistics" />}
             {page === 'companies' && <CompaniesPage />}
             {page === 'products' && <ProductsPage products={products} />}
-            {page === 'templates' && <TemplatesPage companyId={effectiveProfile?.company_id || null} />}
+            {page === 'templates' && <TemplatesPage companyId={effectiveProfile?.company_id || null} adminAll={realIsSuper && !viewAs} />}
             {page === 'statements' && <ComingSoon icon="file-invoice" title="Account Statements" sub="Monthly farm payment reconciliation — coming next" />}
             {page === 'claims' && <ComingSoon icon="alert-triangle" title="Claims & Credit Notes" sub="Quality claims management — coming next" />}
             {page === 'users' && <ComingSoon icon="users" title={accountType === 'buyer' ? 'Team' : 'Users'} sub="User management — coming next" />}
