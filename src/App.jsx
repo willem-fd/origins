@@ -1120,8 +1120,8 @@ export default function App() {
                 onDelete={handleShipmentDelete}
               />
             )}
-            {page === 'growers' && <CompaniesPage initialType="grower" />}
-            {page === 'logistics' && <CompaniesPage initialType="logistics" />}
+            {page === 'growers' && <CompaniesPage initialType="grower" viewAsBuyerId={viewAs?.type === 'buyer' ? viewAs.id : null} />}
+            {page === 'logistics' && <CompaniesPage initialType="logistics" viewAsBuyerId={viewAs?.type === 'buyer' ? viewAs.id : null} />}
             {page === 'companies' && <CompaniesPage />}
             {page === 'products' && <ProductsPage products={products} />}
             {page === 'templates' && <TemplatesPage companyId={effectiveProfile?.company_id || null} adminAll={realIsSuper && !viewAs} />}

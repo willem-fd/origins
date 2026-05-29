@@ -15,7 +15,7 @@ function CountrySelect({ value, onChange }) {
   )
 }
 
-export default function CompaniesPage({ initialType = 'all' }) {
+export default function CompaniesPage({ initialType = 'all', viewAsBuyerId = null }) {
   const [companies, setCompanies] = useState([])
   const [selected, setSelected] = useState(null)
   const [showNew, setShowNew] = useState(false)
@@ -30,9 +30,24 @@ export default function CompaniesPage({ initialType = 'all' }) {
     setF(p => ({ ...p, type: initialType === 'all' ? 'grower' : initialType }))
   }, [initialType])
 
+  // Load companies. When viewing-as a buyer, filter to that buyer's list (relationships + self).
   useEffect(() => {
-    supabase.from('companies').select('*').order('name').then(({ data }) => setCompanies(data || []))
-  }, [])
+    let cancelled = false
+    ;(async () => {
+      const { data: all } = await supabase.from('companies').select('*').order('name')
+      if (cancelled) return
+      if (!viewAsBuyerId) { setCompanies(all || []); return }
+      const { data: rels } = await supabase
+        .from('company_relationships')
+        .select('partner_company_id')
+        .eq('buyer_company_id', viewAsBuyerId)
+        .eq('status', 'active')
+      if (cancelled) return
+      const allowed = new Set([viewAsBuyerId, ...(rels || []).map(r => r.partner_company_id)])
+      setCompanies((all || []).filter(c => allowed.has(c.id)))
+    })()
+    return () => { cancelled = true }
+  }, [viewAsBuyerId])
 
   const filtered = companies.filter(c => {
     const q = search.toLowerCase()
@@ -45,8 +60,16 @@ export default function CompaniesPage({ initialType = 'all' }) {
     if (!f.name) return
     setSaving(true)
     const { data, error } = await supabase.from('companies').insert([f]).select().single()
+    if (error) { setSaving(false); alert(error.message); return }
+    // When viewing-as a buyer, auto-link the new grower/logistics to that buyer's list
+    if (viewAsBuyerId && (data.type === 'grower' || data.type === 'logistics')) {
+      await supabase.from('company_relationships').insert([{
+        buyer_company_id: viewAsBuyerId,
+        partner_company_id: data.id,
+        partner_type: data.type,
+      }])
+    }
     setSaving(false)
-    if (error) { alert(error.message); return }
     setCompanies(p => [...p, data].sort((a, b) => a.name.localeCompare(b.name)))
     setShowNew(false)
     setF({ name: '', brand_name: '', type: 'grower', country: '', city: '', email: '', phone: '' })
