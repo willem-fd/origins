@@ -886,11 +886,26 @@ export default function App() {
     })
   }, [])
 
-  // Load the user's row from public.users (links the auth login to a company + role + super-admin flag)
+  // Load the user's row from public.users (links the auth login to a company + role + super-admin flag).
+  // Company type is fetched in a separate query so a missing/inaccessible company can't null the whole profile.
   useEffect(() => {
     if (!user) { setProfile(null); return }
-    supabase.from('users').select('*, companies(type)').eq('id', user.id).maybeSingle()
-      .then(({ data }) => setProfile(data ? { ...data, account_type: data.companies?.type || null } : null))
+    let cancelled = false
+    ;(async () => {
+      const { data: prof, error } = await supabase
+        .from('users').select('*').eq('id', user.id).maybeSingle()
+      if (cancelled) return
+      if (error || !prof) { setProfile(null); return }
+      let account_type = null
+      if (prof.company_id) {
+        const { data: comp } = await supabase
+          .from('companies').select('type').eq('id', prof.company_id).maybeSingle()
+        if (cancelled) return
+        account_type = comp?.type || null
+      }
+      setProfile({ ...prof, account_type })
+    })()
+    return () => { cancelled = true }
   }, [user])
 
   useEffect(() => {
