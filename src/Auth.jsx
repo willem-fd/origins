@@ -266,7 +266,7 @@ function ResetForm({ onDone }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Small building blocks
 
-function Field({ label, type, value, onChange, autoComplete, placeholder, inputRef, required, trailing }) {
+export function Field({ label, type, value, onChange, autoComplete, placeholder, inputRef, required, trailing }) {
   return (
     <label className="auth-field">
       <span className="auth-field-label">{label}</span>

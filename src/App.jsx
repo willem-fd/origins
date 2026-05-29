@@ -4,6 +4,7 @@ import { CSS } from './styles'
 import POEditor from './POEditor'
 import CompaniesPage from './CompaniesPage'
 import TemplatesPage from './Templates'
+import InvitationsPage, { AcceptInvitation } from './Invitations'
 import Auth from './Auth'
 import { COUNTRIES, SHIP_STATUSES, STATUS_LABELS, STATUS_BADGE, flag, fmt, validateEmail, validatePhone } from './constants'
 
@@ -37,7 +38,7 @@ const NAV = {
     { label: 'Purchasing', items: [['shipments', 'plane', 'Shipments'], ['templates', 'template', 'PO Templates']] },
     { label: 'Relations',  items: [['growers', 'plant', 'Growers'], ['logistics', 'truck', 'Logistics'], ['companies', 'building', 'Companies']] },
     { label: 'Finance',    items: [['statements', 'file-invoice', 'Account Statements'], ['claims', 'alert-triangle', 'Claims']] },
-    { label: 'Admin',      items: [['products', 'flower', 'Products'], ['users', 'users', 'Users'], ['settings', 'settings', 'Settings']] },
+    { label: 'Admin',      items: [['products', 'flower', 'Products'], ['users', 'users', 'Users'], ['invitations', 'mail', 'Invitations'], ['settings', 'settings', 'Settings']] },
   ],
   buyer: [
     { label: 'Overview',   items: [['dashboard', 'layout-dashboard', 'Dashboard']] },
@@ -872,6 +873,9 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [recoveryMode, setRecoveryMode] = useState(false)
+  const [inviteToken, setInviteToken] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('invite') } catch { return null }
+  })
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState('shipments')
   const [shipments, setShipments] = useState([])
@@ -1040,7 +1044,7 @@ export default function App() {
     dashboard: 'Dashboard', shipments: 'Shipments', templates: 'PO Templates',
     growers: 'Growers', logistics: 'Logistics Partners',
     statements: 'Account Statements', claims: 'Claims & Credit Notes',
-    products: 'Product Catalogue', users: 'Users', settings: 'Settings', companies: 'Companies'
+    products: 'Product Catalogue', users: 'Users', invitations: 'Invitations', settings: 'Settings', companies: 'Companies'
   }
 
   // Tailored grower/logistics portal pages. These are scaffolds until Wave 3/4 and
@@ -1074,6 +1078,7 @@ export default function App() {
       ORIGINS
     </div>
   )
+  if (inviteToken) return <><style>{CSS}</style><AcceptInvitation token={inviteToken} onDone={() => { window.history.replaceState({}, '', '/'); setInviteToken(null) }} /></>
   if (recoveryMode) return <><style>{CSS}</style><Auth forceMode="reset" onResetDone={() => setRecoveryMode(false)} onLogin={setUser} /></>
   if (!user) return <><style>{CSS}</style><Auth onLogin={setUser} /></>
 
@@ -1125,6 +1130,7 @@ export default function App() {
             {page === 'companies' && <CompaniesPage />}
             {page === 'products' && <ProductsPage products={products} />}
             {page === 'templates' && <TemplatesPage companyId={effectiveProfile?.company_id || null} adminAll={realIsSuper && !viewAs} />}
+            {page === 'invitations' && <InvitationsPage realProfile={profile} viewAs={viewAs} />}
             {page === 'statements' && <ComingSoon icon="file-invoice" title="Account Statements" sub="Monthly farm payment reconciliation — coming next" />}
             {page === 'claims' && <ComingSoon icon="alert-triangle" title="Claims & Credit Notes" sub="Quality claims management — coming next" />}
             {page === 'users' && <ComingSoon icon="users" title={accountType === 'buyer' ? 'Team' : 'Users'} sub="User management — coming next" />}
