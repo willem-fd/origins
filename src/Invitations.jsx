@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
-import { Field } from './Auth'
+import { Field, eyeOn, eyeOff } from './Auth'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INVITATIONS — Wave 2
@@ -319,7 +319,7 @@ export function AcceptInvitation({ token, onDone }) {
             <Field
               label="Choose a password (min. 8 chars)" type={showPw ? 'text' : 'password'}
               value={password} onChange={setPassword} required placeholder="••••••••" autoComplete="new-password"
-              trailing={<button type="button" className="auth-eye" onClick={() => setShowPw(s => !s)} tabIndex={-1}>{showPw ? '🙈' : '👁'}</button>}
+              trailing={<button type="button" className="auth-eye" onClick={() => setShowPw(s => !s)} tabIndex={-1} aria-label={showPw ? 'Hide password' : 'Show password'}>{showPw ? eyeOff : eyeOn}</button>}
             />
 
             {invite.new_company_id == null && (
