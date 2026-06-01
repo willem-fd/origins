@@ -112,7 +112,7 @@ function LoginForm({ onLogin, onForgot }) {
       </div>
 
       <button type="submit" className="auth-submit" disabled={loading || !email || !pw}>
-        {loading ? <span className="auth-spinner" /> : 'Sign in'}
+        {loading ? <span className="auth-spinner" /> : "Let's go!"}
       </button>
     </form>
   )

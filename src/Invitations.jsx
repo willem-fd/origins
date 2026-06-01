@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { Field, eyeOn, eyeOff } from './Auth'
+import { COUNTRIES } from './constants'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INVITATIONS — Wave 2
@@ -339,13 +340,21 @@ export function AcceptInvitation({ token, onDone }) {
               <>
                 <Field label="Company name *"             type="text" value={companyName} onChange={setCompanyName} required placeholder={invite.new_company_name} />
                 <Field label="Brand name (if different)"  type="text" value={brandName}   onChange={setBrandName}   placeholder="Optional" />
-                <Field label="Country"                    type="text" value={country}     onChange={setCountry}     placeholder="e.g. Netherlands" />
+                <label className="auth-field">
+                  <span className="auth-field-label">Country</span>
+                  <span className="auth-field-wrap">
+                    <select className="auth-input" value={country} onChange={e => setCountry(e.target.value)}>
+                      <option value="">— Select country —</option>
+                      {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
+                    </select>
+                  </span>
+                </label>
                 <Field label="City"                       type="text" value={city}        onChange={setCity}        placeholder="e.g. Aalsmeer" />
               </>
             )}
 
             <button type="submit" className="auth-submit" disabled={phase === 'accepting' || !firstName.trim() || !lastName.trim() || password.length < 8}>
-              {phase === 'accepting' ? <span className="auth-spinner" /> : 'Create my account'}
+              {phase === 'accepting' ? <span className="auth-spinner" /> : "Let's go!"}
             </button>
           </form>
         )}
