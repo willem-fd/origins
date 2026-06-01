@@ -6,19 +6,21 @@ import { supabase } from './supabase'
 // Email is shown read-only; changing it has security implications and we'll
 // handle it separately when transactional email is in place.
 export default function MyProfile({ profile, onClose, onUpdated }) {
-  const [name, setName] = useState(profile?.full_name || '')
+  const [firstName, setFirstName] = useState(profile?.first_name || '')
+  const [lastName, setLastName]   = useState(profile?.last_name || '')
   const [pw, setPw] = useState('')
   const [pw2, setPw2] = useState('')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const [ok, setOk] = useState('')
 
-  const nameChanged = name.trim() && name.trim() !== (profile?.full_name || '').trim()
+  const nameChanged = (firstName.trim() !== (profile?.first_name || '').trim())
+                    || (lastName.trim()  !== (profile?.last_name  || '').trim())
   const wantsPwChange = pw.length > 0 || pw2.length > 0
 
   const save = async () => {
     setErr(''); setOk('')
-    if (!name.trim()) { setErr('Name is required.'); return }
+    if (!firstName.trim() || !lastName.trim()) { setErr('First and last name are required.'); return }
     if (wantsPwChange) {
       if (pw.length < 8) { setErr('New password must be at least 8 characters.'); return }
       if (pw !== pw2)    { setErr('Passwords do not match.'); return }
@@ -26,21 +28,19 @@ export default function MyProfile({ profile, onClose, onUpdated }) {
     if (!nameChanged && !wantsPwChange) { onClose(); return }
 
     setSaving(true)
-    // 1. Update name in public.users
     if (nameChanged) {
       const { error: nErr } = await supabase
-        .from('users').update({ full_name: name.trim() })
+        .from('users').update({ first_name: firstName.trim(), last_name: lastName.trim() })
         .eq('id', profile.id)
       if (nErr) { setSaving(false); setErr(nErr.message); return }
     }
-    // 2. Update password via Supabase Auth
     if (wantsPwChange) {
       const { error: pErr } = await supabase.auth.updateUser({ password: pw })
       if (pErr) { setSaving(false); setErr(pErr.message); return }
     }
     setSaving(false)
     setOk('Saved.')
-    onUpdated?.({ ...profile, full_name: name.trim() })
+    onUpdated?.({ ...profile, first_name: firstName.trim(), last_name: lastName.trim() })
     setTimeout(() => onClose(), 700)
   }
 
@@ -52,9 +52,15 @@ export default function MyProfile({ profile, onClose, onUpdated }) {
           <div className="btn-icon" onClick={onClose}><i className="ti ti-x" aria-hidden="true" /></div>
         </div>
         <div className="modal-body">
-          <div>
-            <label className="form-label">Full name</label>
-            <input className="form-input" value={name} onChange={e => setName(e.target.value)} />
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label className="form-label">First name *</label>
+              <input className="form-input" value={firstName} onChange={e => setFirstName(e.target.value)} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label className="form-label">Last name *</label>
+              <input className="form-input" value={lastName} onChange={e => setLastName(e.target.value)} />
+            </div>
           </div>
           <div>
             <label className="form-label">Email</label>

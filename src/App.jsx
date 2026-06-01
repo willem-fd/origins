@@ -124,9 +124,9 @@ function Sidebar({ page, setPage, profile, accountType, pendingCount, onSignOut,
             </div>
           )}
           <div className="user-row" onClick={() => setMenuOpen(o => !o)} style={{ cursor: 'pointer' }}>
-            <div className="avatar">{((profile?.full_name || 'U')).slice(0, 2).toUpperCase()}</div>
+            <div className="avatar">{((profile?.first_name?.[0] || '') + (profile?.last_name?.[0] || '') || 'U').toUpperCase()}</div>
             <div>
-              <div className="user-name">{profile?.full_name || 'User'}</div>
+              <div className="user-name">{`${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'User'}</div>
               <div className="user-role">{roleText}</div>
             </div>
             <i className="ti ti-chevron-up" style={{ marginLeft: 'auto', fontSize: 16, color: 'var(--text-3)' }} aria-hidden="true" />
@@ -1087,7 +1087,7 @@ export default function App() {
   // controls remain available.
   const realIsSuper = !!profile?.is_super_admin
   const effectiveProfile = viewAs
-    ? { full_name: viewAs.brand_name || viewAs.name, role: 'admin', is_super_admin: false, company_id: viewAs.id }
+    ? { first_name: viewAs.brand_name || viewAs.name, last_name: '', role: 'admin', is_super_admin: false, company_id: viewAs.id }
     : profile
   const accountType = viewAs ? viewAs.type : (realIsSuper ? 'super' : (profile?.account_type || 'buyer'))
 

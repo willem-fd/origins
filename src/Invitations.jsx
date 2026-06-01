@@ -223,9 +223,11 @@ export function AcceptInvitation({ token, onDone }) {
   const [invite, setInvite] = useState(null)
   const [errMsg, setErrMsg] = useState('')
 
-  const [fullName, setFullName] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPw, setShowPw] = useState(false)
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName]   = useState('')
+  const [password, setPassword]   = useState('')
+  const [showPw, setShowPw]       = useState(false)
+  const [companyName, setCompanyName] = useState('')
   const [brandName, setBrandName] = useState('')
   const [country, setCountry] = useState('')
   const [city, setCity] = useState('')
@@ -238,6 +240,8 @@ export function AcceptInvitation({ token, onDone }) {
       const row = Array.isArray(data) ? data[0] : data
       if (error || !row) { setPhase('error'); setErrMsg('This invitation link is invalid or has expired.'); return }
       setInvite(row)
+      // Pre-populate company name from the inviter's value (invitee can confirm/edit)
+      if (row.new_company_name) setCompanyName(row.new_company_name)
       setPhase('form')
     })()
     return () => { cancelled = true }
@@ -246,7 +250,8 @@ export function AcceptInvitation({ token, onDone }) {
   const submit = async (e) => {
     e?.preventDefault?.()
     setErrMsg('')
-    if (!fullName.trim() || password.length < 8) { setErrMsg('Please enter your name and a password of at least 8 characters.'); return }
+    if (!firstName.trim() || !lastName.trim()) { setErrMsg('Please enter your first and last name.'); return }
+    if (password.length < 8) { setErrMsg('Password must be at least 8 characters.'); return }
     setPhase('accepting')
 
     // 1. Sign up (email confirmation is off in dev — we'll be auto-signed-in)
@@ -260,7 +265,6 @@ export function AcceptInvitation({ token, onDone }) {
     // Make sure we're authenticated before calling the accept RPC
     const { data: session } = await supabase.auth.getSession()
     if (!session?.session) {
-      // Try explicit sign in as a fallback
       const { error: siErr } = await supabase.auth.signInWithPassword({ email: invite.email, password })
       if (siErr) { setPhase('form'); setErrMsg(siErr.message); return }
     }
@@ -268,10 +272,12 @@ export function AcceptInvitation({ token, onDone }) {
     // 2. Accept invitation (creates company + user row, plus relationship if applicable)
     const { data: res, error: acErr } = await supabase.rpc('accept_invitation', {
       t: token,
-      full_name: fullName.trim(),
-      country: country.trim() || null,
-      city: city.trim() || null,
-      brand_name: brandName.trim() || null,
+      first_name:   firstName.trim(),
+      last_name:    lastName.trim(),
+      company_name: companyName.trim() || null,
+      country:      country.trim()  || null,
+      city:         city.trim()     || null,
+      brand_name:   brandName.trim() || null,
     })
     if (acErr || !res?.ok) {
       setPhase('form')
@@ -315,23 +321,30 @@ export function AcceptInvitation({ token, onDone }) {
             {errMsg && <div className="auth-alert" role="alert">{errMsg}</div>}
 
             <Field label="Your email" type="email" value={invite.email} onChange={() => {}} />
-            <Field label="Your full name" type="text" value={fullName} onChange={setFullName} required placeholder="First and last name" />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <Field label="First name *" type="text" value={firstName} onChange={setFirstName} required placeholder="First name" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Field label="Last name *" type="text" value={lastName} onChange={setLastName} required placeholder="Last name" />
+              </div>
+            </div>
             <Field
               label="Choose a password (min. 8 chars)" type={showPw ? 'text' : 'password'}
               value={password} onChange={setPassword} required placeholder="••••••••" autoComplete="new-password"
               trailing={<button type="button" className="auth-eye" onClick={() => setShowPw(s => !s)} tabIndex={-1} aria-label={showPw ? 'Hide password' : 'Show password'}>{showPw ? eyeOff : eyeOn}</button>}
             />
 
-            {invite.new_company_id == null && (
+            {invite.company_id == null && (
               <>
-                <div style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 4 }}>Tell us a little about <strong>{invite.new_company_name}</strong> (optional now — you can fill in later):</div>
-                <Field label="Brand name (if different)" type="text" value={brandName} onChange={setBrandName} placeholder={invite.new_company_name} />
-                <Field label="Country"                   type="text" value={country}   onChange={setCountry}   placeholder="e.g. Netherlands" />
-                <Field label="City"                      type="text" value={city}      onChange={setCity}      placeholder="e.g. Aalsmeer" />
+                <Field label="Company name *"             type="text" value={companyName} onChange={setCompanyName} required placeholder={invite.new_company_name} />
+                <Field label="Brand name (if different)"  type="text" value={brandName}   onChange={setBrandName}   placeholder="Optional" />
+                <Field label="Country"                    type="text" value={country}     onChange={setCountry}     placeholder="e.g. Netherlands" />
+                <Field label="City"                       type="text" value={city}        onChange={setCity}        placeholder="e.g. Aalsmeer" />
               </>
             )}
 
-            <button type="submit" className="auth-submit" disabled={phase === 'accepting' || !fullName || password.length < 8}>
+            <button type="submit" className="auth-submit" disabled={phase === 'accepting' || !firstName.trim() || !lastName.trim() || password.length < 8}>
               {phase === 'accepting' ? <span className="auth-spinner" /> : 'Create my account'}
             </button>
           </form>
