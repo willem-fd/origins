@@ -15,8 +15,11 @@ const acceptUrlFor = (token) => `${window.location.origin}/?invite=${token}`
 // ─── Send invitation modal ───────────────────────────────────────────────────
 export function SendInvitationModal({ realProfile, viewAs, onClose, onCreated }) {
   const realIsSuper = !!realProfile?.is_super_admin
-  // Super admin (no view-as) is inviting a new buyer; in view-as buyer mode, inviting a grower/logistics
-  const defaultType = (!viewAs && realIsSuper) ? 'buyer' : 'grower'
+  // Available invitation types based on who's inviting:
+  //  - super admin, no view-as: can invite a new Buyer (or Grower/Logistics for completeness)
+  //  - super admin in view-as buyer, OR buyer admin: invite Grower / Logistics
+  const availableTypes = (realIsSuper && !viewAs) ? ['buyer', 'grower', 'logistics'] : ['grower', 'logistics']
+  const defaultType = availableTypes[0]
   const inviterCompanyId = viewAs ? viewAs.id : (realIsSuper ? null : realProfile?.company_id)
 
   const [type, setType] = useState(defaultType)
@@ -27,7 +30,7 @@ export function SendInvitationModal({ realProfile, viewAs, onClose, onCreated })
   const [result, setResult] = useState(null)  // {token, link} after creation
   const [copied, setCopied] = useState(false)
 
-  const canChooseType = realIsSuper && !viewAs   // super admin can pick any type
+  const canChooseType = availableTypes.length > 1
   const send = async () => {
     setErr('')
     if (!email.trim() || !companyName.trim()) { setErr('Email and company name are required.'); return }
@@ -90,7 +93,7 @@ export function SendInvitationModal({ realProfile, viewAs, onClose, onCreated })
             <div>
               <label className="form-label">Type</label>
               <div style={{ display: 'flex', gap: 8 }}>
-                {['buyer', 'grower', 'logistics'].map(t => (
+                {availableTypes.map(t => (
                   <div key={t} className={`filter-chip${type === t ? ' active' : ''}`} onClick={() => setType(t)}>{TYPE_LABELS[t]}</div>
                 ))}
               </div>
@@ -102,7 +105,7 @@ export function SendInvitationModal({ realProfile, viewAs, onClose, onCreated })
           </div>
           <div>
             <label className="form-label">{TYPE_LABELS[type]} company name *</label>
-            <input className="form-input" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder={type === 'buyer' ? 'e.g. Farm Direct' : 'e.g. Joygardens'} />
+            <input className="form-input" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder={type === 'buyer' ? 'e.g. Farm Direct' : type === 'logistics' ? 'e.g. KLM Cargo' : 'e.g. Joygardens'} />
           </div>
           {err && <div style={{ fontSize: 12.5, color: '#b91c1c' }}>{err}</div>}
         </div>

@@ -45,7 +45,7 @@ const NAV = {
     { label: 'Purchasing', items: [['shipments', 'plane', 'Shipments'], ['templates', 'template', 'PO Templates']] },
     { label: 'Relations',  items: [['growers', 'plant', 'Growers'], ['logistics', 'truck', 'Logistics']] },
     { label: 'Finance',    items: [['statements', 'file-invoice', 'Account Statements'], ['claims', 'alert-triangle', 'Claims']] },
-    { label: 'Account',    items: [['users', 'users', 'Team'], ['settings', 'settings', 'Settings']] },
+    { label: 'Account',    items: [['users', 'users', 'Team'], ['invitations', 'mail', 'Invitations'], ['settings', 'settings', 'Settings']] },
   ],
   grower: [
     { label: 'Overview', items: [['dashboard', 'layout-dashboard', 'Dashboard']] },
@@ -61,8 +61,12 @@ const NAV = {
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
+const ADMIN_ONLY_ITEMS = new Set(['invitations'])
 function Sidebar({ page, setPage, profile, accountType, pendingCount, onSignOut, showViewAs, onOpenViewAs }) {
-  const sections = NAV[accountType] || NAV.buyer
+  const isAdmin = !!profile?.is_super_admin || profile?.role === 'admin'
+  const sections = (NAV[accountType] || NAV.buyer)
+    .map(sec => ({ ...sec, items: sec.items.filter(([id]) => isAdmin || !ADMIN_ONLY_ITEMS.has(id)) }))
+    .filter(sec => sec.items.length > 0)
   const ni = (id, icon, label) => (
     <div key={id} className={`nav-item${page === id ? ' active' : ''}`} onClick={() => setPage(id)}>
       <i className={`ti ti-${icon}`} aria-hidden="true" />{label}
