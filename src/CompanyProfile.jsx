@@ -455,7 +455,7 @@ function CatalogueTab({ company }) {
 }
 
 // ── Main CompanyProfile component ─────────────────────────────────────────────
-export default function CompanyProfile({ company, onBack, onUpdate }) {
+export default function CompanyProfile({ company, onBack, onUpdate, embedded = false }) {
   const [tab, setTab] = useState('general')
   const [c, setC] = useState(company)
 
@@ -464,9 +464,11 @@ export default function CompanyProfile({ company, onBack, onUpdate }) {
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-        <button className="btn btn-ghost btn-sm" onClick={onBack}><i className="ti ti-arrow-left" /> Companies</button>
-      </div>
+      {!embedded && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+          <button className="btn btn-ghost btn-sm" onClick={onBack}><i className="ti ti-arrow-left" /> Companies</button>
+        </div>
+      )}
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
         <h1 style={{ fontSize: 21, fontWeight: 400 }}>{c.brand_name || c.name}</h1>

@@ -3,8 +3,10 @@ import { supabase } from './supabase'
 import { CSS } from './styles'
 import POEditor from './POEditor'
 import CompaniesPage from './CompaniesPage'
+import CompanyProfile from './CompanyProfile'
 import TemplatesPage from './Templates'
 import InvitationsPage, { AcceptInvitation } from './Invitations'
+import MyProfile from './MyProfile'
 import Auth from './Auth'
 import { COUNTRIES, SHIP_STATUSES, STATUS_LABELS, STATUS_BADGE, flag, fmt, validateEmail, validatePhone } from './constants'
 
@@ -62,11 +64,12 @@ const NAV = {
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 const ADMIN_ONLY_ITEMS = new Set(['invitations'])
-function Sidebar({ page, setPage, profile, accountType, pendingCount, onSignOut, showViewAs, onOpenViewAs }) {
+function Sidebar({ page, setPage, profile, accountType, pendingCount, onSignOut, showViewAs, onOpenViewAs, onOpenProfile }) {
   const isAdmin = !!profile?.is_super_admin || profile?.role === 'admin'
   const sections = (NAV[accountType] || NAV.buyer)
     .map(sec => ({ ...sec, items: sec.items.filter(([id]) => isAdmin || !ADMIN_ONLY_ITEMS.has(id)) }))
     .filter(sec => sec.items.length > 0)
+  const [menuOpen, setMenuOpen] = useState(false)
   const ni = (id, icon, label) => (
     <div key={id} className={`nav-item${page === id ? ' active' : ''}`} onClick={() => setPage(id)}>
       <i className={`ti ti-${icon}`} aria-hidden="true" />{label}
@@ -75,6 +78,17 @@ function Sidebar({ page, setPage, profile, accountType, pendingCount, onSignOut,
   )
   const roleText = profile?.is_super_admin ? 'Super admin'
     : (profile?.role === 'admin' ? 'Admin' : 'Member')
+
+  // Close popover on outside click
+  useEffect(() => {
+    if (!menuOpen) return
+    const onDocClick = (e) => {
+      if (!e.target.closest?.('.user-menu-wrap')) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [menuOpen])
+
   return (
     <div className="sidebar">
       <div className="sidebar-logo" onClick={() => setPage('dashboard')}>
@@ -94,11 +108,28 @@ function Sidebar({ page, setPage, profile, accountType, pendingCount, onSignOut,
             <i className="ti ti-eye" aria-hidden="true" />View as company…
           </div>
         )}
-        <div className="user-row" onClick={onSignOut}>
-          <div className="avatar">{((profile?.full_name || 'U')).slice(0, 2).toUpperCase()}</div>
-          <div>
-            <div className="user-name">{profile?.full_name || 'User'}</div>
-            <div className="user-role">{roleText} · sign out</div>
+        <div className="user-menu-wrap" style={{ position: 'relative' }}>
+          {menuOpen && (
+            <div style={{
+              position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 6,
+              background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.08)', padding: 4, zIndex: 10
+            }}>
+              <div className="nav-item" style={{ margin: 0 }} onClick={() => { setMenuOpen(false); onOpenProfile?.() }}>
+                <i className="ti ti-user" aria-hidden="true" />My profile
+              </div>
+              <div className="nav-item" style={{ margin: 0 }} onClick={() => { setMenuOpen(false); onSignOut() }}>
+                <i className="ti ti-logout" aria-hidden="true" />Sign out
+              </div>
+            </div>
+          )}
+          <div className="user-row" onClick={() => setMenuOpen(o => !o)} style={{ cursor: 'pointer' }}>
+            <div className="avatar">{((profile?.full_name || 'U')).slice(0, 2).toUpperCase()}</div>
+            <div>
+              <div className="user-name">{profile?.full_name || 'User'}</div>
+              <div className="user-role">{roleText}</div>
+            </div>
+            <i className="ti ti-chevron-up" style={{ marginLeft: 'auto', fontSize: 16, color: 'var(--text-3)' }} aria-hidden="true" />
           </div>
         </div>
       </div>
@@ -872,6 +903,24 @@ function ComingSoon({ icon, title, sub }) {
   return <div className="card" style={{ padding: '80px 20px' }}><div className="empty"><i className={`ti ti-${icon}`} /><div className="empty-title">{title}</div><div className="empty-sub">{sub}</div></div></div>
 }
 
+// Settings page = embedded CompanyProfile for the effective company.
+// Admins can edit, non-admins see the same UI but RLS will block writes.
+function CompanySettingsPage({ companyId }) {
+  const [company, setCompany] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    if (!companyId) { setCompany(null); return }
+    ;(async () => {
+      const { data } = await supabase.from('companies').select('*').eq('id', companyId).maybeSingle()
+      if (!cancelled) setCompany(data || null)
+    })()
+    return () => { cancelled = true }
+  }, [companyId])
+  if (!companyId) return <ComingSoon icon="settings" title="Settings" sub="Global settings — coming next" />
+  if (!company) return <div className="empty"><i className="ti ti-loader" /><div className="empty-title">Loading…</div></div>
+  return <CompanyProfile company={company} embedded onUpdate={c => setCompany(c)} />
+}
+
 // ── Root App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null)
@@ -891,6 +940,7 @@ export default function App() {
   const [companies, setCompanies] = useState([])   // all companies, for the super-admin "view as" picker
   const [viewAs, setViewAs] = useState(null)        // company being impersonated (null = real super-admin)
   const [showViewAs, setShowViewAs] = useState(false)
+  const [showMyProfile, setShowMyProfile] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => { setUser(session?.user ?? null); setLoading(false) })
@@ -1099,6 +1149,7 @@ export default function App() {
           onSignOut={handleSignOut}
           showViewAs={realIsSuper && !viewAs}
           onOpenViewAs={() => setShowViewAs(true)}
+          onOpenProfile={() => setShowMyProfile(true)}
         />
         <div className="main">
           {viewAs && <ViewAsBanner company={viewAs} onSwitch={() => setShowViewAs(true)} onExit={exitViewAs} />}
@@ -1138,7 +1189,7 @@ export default function App() {
             {page === 'statements' && <ComingSoon icon="file-invoice" title="Account Statements" sub="Monthly farm payment reconciliation — coming next" />}
             {page === 'claims' && <ComingSoon icon="alert-triangle" title="Claims & Credit Notes" sub="Quality claims management — coming next" />}
             {page === 'users' && <ComingSoon icon="users" title={accountType === 'buyer' ? 'Team' : 'Users'} sub="User management — coming next" />}
-            {page === 'settings' && <ComingSoon icon="settings" title="Settings" sub="Global settings — coming next" />}
+            {page === 'settings' && <CompanySettingsPage companyId={effectiveProfile?.company_id || null} />}
             </>
             )}
           </div>
@@ -1146,6 +1197,9 @@ export default function App() {
       </div>
       {showViewAs && (
         <ViewAsModal companies={companies} onPick={enterViewAs} onClose={() => setShowViewAs(false)} />
+      )}
+      {showMyProfile && (
+        <MyProfile profile={profile} onClose={() => setShowMyProfile(false)} onUpdated={updated => setProfile(updated)} />
       )}
       {showNewShipment && (
         <ShipmentForm
