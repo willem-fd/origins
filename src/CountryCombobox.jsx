@@ -63,7 +63,7 @@ export default function CountryCombobox({ value, onChange, className = 'form-inp
         <div style={{
           position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
           maxHeight: 240, overflowY: 'auto',
-          background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8,
+          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8,
           boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 100,
         }}>
           {filtered.length === 0 ? (
