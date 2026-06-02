@@ -13,29 +13,62 @@ import CountryCombobox from './CountryCombobox'
 const TYPE_LABELS = { buyer: 'Buyer', grower: 'Grower', logistics: 'Logistics' }
 const acceptUrlFor = (token) => `${window.location.origin}/?invite=${token}`
 
-// ─── Send invitation modal ───────────────────────────────────────────────────
+// ─── Send invitation / connection-request modal ──────────────────────────────
+// Two paths under one modal:
+//   1. Super admin no view-as, type='buyer' → invite a new buyer (no lookup; needs email + company name)
+//   2. Buyer admin OR super-in-view-as buyer, type='grower'|'logistics' →
+//      look up by company name first; if a match exists, send a connection request;
+//      if not, fall through to invitation.
 export function SendInvitationModal({ realProfile, viewAs, onClose, onCreated }) {
   const realIsSuper = !!realProfile?.is_super_admin
-  // Available invitation types based on who's inviting:
-  //  - super admin, no view-as: can invite a new Buyer (or Grower/Logistics for completeness)
-  //  - super admin in view-as buyer, OR buyer admin: invite Grower / Logistics
   const availableTypes = (realIsSuper && !viewAs) ? ['buyer', 'grower', 'logistics'] : ['grower', 'logistics']
   const defaultType = availableTypes[0]
   const inviterCompanyId = viewAs ? viewAs.id : (realIsSuper ? null : realProfile?.company_id)
 
+  const [phase, setPhase] = useState('form')      // form | matched | no-match | submitting | created | requested
   const [type, setType] = useState(defaultType)
   const [email, setEmail] = useState('')
   const [companyName, setCompanyName] = useState('')
+  const [match, setMatch] = useState(null)         // companies row when found
   const [err, setErr] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [result, setResult] = useState(null)  // {token, link} after creation
+  const [result, setResult] = useState(null)       // {token, link} after invitation is created
   const [copied, setCopied] = useState(false)
 
-  const canChooseType = availableTypes.length > 1
-  const send = async () => {
+  const canChooseType    = availableTypes.length > 1
+  const isInvitingBuyer  = type === 'buyer'        // buyer invites never look up — buyers are always net-new
+
+  // Switching type resets back to form
+  useEffect(() => { setPhase('form'); setMatch(null); setErr('') }, [type])
+
+  const lookupOrInvite = async () => {
     setErr('')
-    if (!email.trim() || !companyName.trim()) { setErr('Email and company name are required.'); return }
-    setSaving(true)
+    if (!companyName.trim()) { setErr('Company name is required.'); return }
+
+    if (isInvitingBuyer) {
+      // Buyer-type invites skip the lookup entirely
+      if (!email.trim()) { setErr('Email is required.'); return }
+      return sendInvitation()
+    }
+
+    // Grower/logistics: try lookup first
+    setPhase('submitting')
+    const { data, error } = await supabase.rpc('lookup_partner_by_name', {
+      partner_name: companyName.trim(),
+      partner_type: type,
+    })
+    if (error) { setPhase('form'); setErr(error.message); return }
+    if (data && data.length > 0) {
+      setMatch(data[0])
+      setPhase('matched')
+    } else {
+      setPhase('no-match')
+    }
+  }
+
+  const sendInvitation = async () => {
+    setErr('')
+    if (!email.trim()) { setErr('Email is required.'); return }
+    setPhase('submitting')
     const payload = {
       email: email.trim(),
       new_company_name: companyName.trim(),
@@ -44,17 +77,36 @@ export function SendInvitationModal({ realProfile, viewAs, onClose, onCreated })
       inviter_company_id: inviterCompanyId,
     }
     const { data, error } = await supabase.from('company_invitations').insert([payload]).select().single()
-    setSaving(false)
-    if (error) { setErr(error.message); return }
+    if (error) {
+      setPhase(isInvitingBuyer ? 'form' : 'no-match')
+      setErr(error.message)
+      return
+    }
     setResult({ token: data.token, link: acceptUrlFor(data.token) })
+    setPhase('created')
     onCreated?.(data)
+  }
+
+  const sendConnectionRequest = async () => {
+    setErr(''); setPhase('submitting')
+    const { data, error } = await supabase.rpc('create_partner_connection_request', {
+      target_partner_id: match.id,
+    })
+    if (error || !data?.ok) {
+      setPhase('matched')
+      setErr(error?.message || data?.error || 'Could not create connection request.')
+      return
+    }
+    setPhase('requested')
+    onCreated?.()
   }
 
   const copy = async () => {
     try { await navigator.clipboard.writeText(result.link); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch {}
   }
 
-  if (result) {
+  // ── Phase: created (invitation link to share) ──
+  if (phase === 'created') {
     return (
       <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
         <div className="modal" style={{ maxWidth: 540 }}>
@@ -82,15 +134,38 @@ export function SendInvitationModal({ realProfile, viewAs, onClose, onCreated })
     )
   }
 
+  // ── Phase: requested (connection request sent) ──
+  if (phase === 'requested') {
+    return (
+      <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+        <div className="modal" style={{ maxWidth: 480 }}>
+          <div className="modal-header">
+            <div className="modal-title"><i className="ti ti-check" aria-hidden="true" /> Connection request sent</div>
+            <div className="btn-icon" onClick={onClose}><i className="ti ti-x" aria-hidden="true" /></div>
+          </div>
+          <div className="modal-body">
+            <div style={{ fontSize: 13.5, color: 'var(--text-2)' }}>
+              We've sent a connection request to <strong>{match?.name}</strong>. Once they accept, they'll appear in your {TYPE_LABELS[match?.type]}s list.
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button className="btn btn-primary" onClick={onClose}>Done</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Phases: form | matched | no-match | submitting ──
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ maxWidth: 540 }}>
         <div className="modal-header">
-          <div className="modal-title"><i className="ti ti-mail" aria-hidden="true" /> Send invitation</div>
+          <div className="modal-title"><i className="ti ti-user-plus" aria-hidden="true" /> Add partner</div>
           <div className="btn-icon" onClick={onClose}><i className="ti ti-x" aria-hidden="true" /></div>
         </div>
         <div className="modal-body">
-          {canChooseType && (
+          {canChooseType && phase === 'form' && (
             <div>
               <label className="form-label">Type</label>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -100,21 +175,84 @@ export function SendInvitationModal({ realProfile, viewAs, onClose, onCreated })
               </div>
             </div>
           )}
-          <div>
-            <label className="form-label">Email *</label>
-            <input className="form-input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="them@company.com" autoFocus />
-          </div>
-          <div>
-            <label className="form-label">{TYPE_LABELS[type]} company name *</label>
-            <input className="form-input" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder={type === 'buyer' ? 'e.g. Farm Direct' : type === 'logistics' ? 'e.g. KLM Cargo' : 'e.g. Joygardens'} />
-          </div>
+
+          {phase === 'form' && (
+            <>
+              <div>
+                <label className="form-label">{TYPE_LABELS[type]} company name *</label>
+                <input
+                  className="form-input"
+                  value={companyName}
+                  onChange={e => setCompanyName(e.target.value)}
+                  placeholder={type === 'buyer' ? 'e.g. Farm Direct' : type === 'logistics' ? 'e.g. KLM Cargo' : 'e.g. Joygardens'}
+                  autoFocus
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); lookupOrInvite() } }}
+                />
+                {!isInvitingBuyer && (
+                  <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 4 }}>
+                    We'll check if they're already on Origins. If not, you can invite them.
+                  </div>
+                )}
+              </div>
+              {isInvitingBuyer && (
+                <div>
+                  <label className="form-label">Email *</label>
+                  <input className="form-input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="them@company.com" />
+                </div>
+              )}
+            </>
+          )}
+
+          {phase === 'matched' && match && (
+            <div className="card" style={{ padding: 14 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Match found</div>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>{match.brand_name || match.name}</div>
+              {match.brand_name && match.brand_name !== match.name && (
+                <div style={{ fontSize: 12.5, color: 'var(--text-3)' }}>Legal name: {match.name}</div>
+              )}
+              <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 6 }}>
+                {TYPE_LABELS[match.type]}{match.country ? ` · ${match.country}` : ''}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 10 }}>
+                They'll receive a notification and must accept before you can place orders with them.
+              </div>
+            </div>
+          )}
+
+          {phase === 'no-match' && (
+            <>
+              <div style={{ padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 7, fontSize: 13, color: 'var(--text-2)' }}>
+                <strong>{companyName}</strong> isn't on Origins yet. Send them an invitation to onboard.
+              </div>
+              <div>
+                <label className="form-label">Email *</label>
+                <input className="form-input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="them@company.com" autoFocus />
+              </div>
+            </>
+          )}
+
+          {phase === 'submitting' && (
+            <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>Working…</div>
+          )}
+
           {err && <div style={{ fontSize: 12.5, color: '#b91c1c' }}>{err}</div>}
         </div>
         <div className="modal-footer">
+          {(phase === 'matched' || phase === 'no-match') && (
+            <button className="btn btn-ghost" onClick={() => { setPhase('form'); setMatch(null); setEmail(''); setErr('') }}>← Try different name</button>
+          )}
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={send} disabled={saving || !email.trim() || !companyName.trim()}>
-            {saving ? 'Creating…' : 'Create invitation'}
-          </button>
+          {phase === 'form' && (
+            <button className="btn btn-primary" onClick={lookupOrInvite} disabled={!companyName.trim() || (isInvitingBuyer && !email.trim())}>
+              {isInvitingBuyer ? 'Create invitation' : 'Continue'}
+            </button>
+          )}
+          {phase === 'matched' && (
+            <button className="btn btn-primary" onClick={sendConnectionRequest}>Send connection request</button>
+          )}
+          {phase === 'no-match' && (
+            <button className="btn btn-primary" onClick={sendInvitation} disabled={!email.trim()}>Send invitation</button>
+          )}
         </div>
       </div>
     </div>
@@ -365,6 +503,78 @@ export function AcceptInvitation({ token, onDone }) {
         )}
       </div>
       <footer className="auth-foot"><span>© Origins · A platform for flower trade</span></footer>
+    </div>
+  )
+}
+
+// ─── Connection Requests page (partner side: grower / logistics) ─────────────
+export function ConnectionRequestsPage({ companyId, onRespond }) {
+  const [requests, setRequests] = useState(null)
+  const [actionId, setActionId] = useState(null)
+  const [err, setErr] = useState('')
+
+  const refresh = async () => {
+    if (!companyId) { setRequests([]); return }
+    const { data, error } = await supabase
+      .from('company_relationships')
+      .select('id, partner_type, created_at, buyer:companies!company_relationships_buyer_company_id_fkey(id, name, brand_name, country)')
+      .eq('partner_company_id', companyId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+    if (error) setErr(error.message)
+    setRequests(data || [])
+  }
+  useEffect(() => { refresh() }, [companyId])
+
+  const respond = async (id, accept) => {
+    setErr(''); setActionId(id)
+    const { data, error } = await supabase.rpc('respond_to_connection_request', { request_id: id, accept })
+    setActionId(null)
+    if (error || !data?.ok) { setErr(error?.message || data?.error || 'Could not update.'); return }
+    refresh(); onRespond?.()
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 13.5, color: 'var(--text-2)', marginBottom: 16 }}>
+        Buyers who want to work with you. Accept to start trading; decline to refuse the connection.
+      </div>
+
+      {err && <div style={{ padding: '10px 14px', background: '#fef2f2', color: '#b91c1c', borderRadius: 7, fontSize: 13, marginBottom: 12 }}>{err}</div>}
+
+      {requests === null && <div className="empty"><i className="ti ti-loader" /><div className="empty-title">Loading…</div></div>}
+      {requests && requests.length === 0 && (
+        <div className="empty">
+          <i className="ti ti-mail" />
+          <div className="empty-title">No pending connection requests</div>
+          <div className="empty-sub">When a buyer adds you as a partner, you'll see them here.</div>
+        </div>
+      )}
+
+      {requests && requests.map(req => (
+        <div className="card" key={req.id} style={{ padding: 16, marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>{req.buyer?.brand_name || req.buyer?.name}</div>
+              {req.buyer?.brand_name && req.buyer?.brand_name !== req.buyer?.name && (
+                <div style={{ fontSize: 12.5, color: 'var(--text-3)' }}>Legal name: {req.buyer.name}</div>
+              )}
+              <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 4 }}>
+                Buyer{req.buyer?.country ? ` · ${req.buyer.country}` : ''}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6 }}>
+                Requested {new Date(req.created_at).toLocaleDateString()}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-ghost" disabled={actionId === req.id} onClick={() => respond(req.id, false)}>Decline</button>
+              <button className="btn btn-primary" disabled={actionId === req.id} onClick={() => respond(req.id, true)}>
+                {actionId === req.id ? 'Saving…' : 'Accept'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

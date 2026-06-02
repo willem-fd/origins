@@ -5,7 +5,7 @@ import POEditor from './POEditor'
 import CompaniesPage from './CompaniesPage'
 import CompanyProfile from './CompanyProfile'
 import TemplatesPage from './Templates'
-import InvitationsPage, { AcceptInvitation } from './Invitations'
+import InvitationsPage, { AcceptInvitation, ConnectionRequestsPage } from './Invitations'
 import MyProfile from './MyProfile'
 import CountryCombobox from './CountryCombobox'
 import Auth from './Auth'
@@ -44,18 +44,18 @@ const NAV = {
     { label: 'Overview', items: [['dashboard', 'layout-dashboard', 'Dashboard']] },
     { label: 'Orders',   items: [['shipments', 'plane', 'Orders']] },
     { label: 'Finance',  items: [['invoices', 'file-invoice', 'Invoices'], ['statements', 'file-invoice', 'Statements']] },
-    { label: 'Account',  items: [['settings', 'settings', 'Settings']] },
+    { label: 'Account',  items: [['connections', 'link', 'Connection Requests'], ['settings', 'settings', 'Settings']] },
   ],
   logistics: [
     { label: 'Overview',   items: [['dashboard', 'layout-dashboard', 'Dashboard']] },
     { label: 'Logistics',  items: [['shipments', 'plane', 'Assigned Shipments'], ['documents', 'file', 'Documents']] },
-    { label: 'Account',    items: [['settings', 'settings', 'Settings']] },
+    { label: 'Account',    items: [['connections', 'link', 'Connection Requests'], ['settings', 'settings', 'Settings']] },
   ],
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
-const ADMIN_ONLY_ITEMS = new Set(['invitations'])
-function Sidebar({ page, setPage, profile, accountType, pendingCount, onSignOut, showViewAs, onOpenViewAs, onOpenProfile }) {
+const ADMIN_ONLY_ITEMS = new Set(['invitations', 'connections'])
+function Sidebar({ page, setPage, profile, accountType, pendingCount, pendingConnections, onSignOut, showViewAs, onOpenViewAs, onOpenProfile }) {
   const isAdmin = !!profile?.is_super_admin || profile?.role === 'admin'
   const sections = (NAV[accountType] || NAV.buyer)
     .map(sec => ({ ...sec, items: sec.items.filter(([id]) => isAdmin || !ADMIN_ONLY_ITEMS.has(id)) }))
@@ -65,6 +65,7 @@ function Sidebar({ page, setPage, profile, accountType, pendingCount, onSignOut,
     <div key={id} className={`nav-item${page === id ? ' active' : ''}`} onClick={() => setPage(id)}>
       <i className={`ti ti-${icon}`} aria-hidden="true" />{label}
       {id === 'shipments' && pendingCount ? <span className="nav-badge">{pendingCount}</span> : null}
+      {id === 'connections' && pendingConnections ? <span className="nav-badge">{pendingConnections}</span> : null}
     </div>
   )
   const roleText = profile?.is_super_admin ? 'Super admin'
@@ -1072,6 +1073,21 @@ export default function App() {
   const navPage = p => { setPage(p); setSelectedShipment(null) }
   const pendingCount = shipments.filter(s => ['draft', 'active', 'in_transit'].includes(s.status)).length
 
+  // Pending connection requests addressed to the currently-viewed company (grower/logistics).
+  const [pendingConnections, setPendingConnections] = useState(0)
+  const refreshPendingConnections = async () => {
+    const cid = viewAs ? viewAs.id : profile?.company_id
+    const accountTypeNow = viewAs ? viewAs.type : profile?.account_type
+    if (!cid || (accountTypeNow !== 'grower' && accountTypeNow !== 'logistics')) { setPendingConnections(0); return }
+    const { count } = await supabase
+      .from('company_relationships')
+      .select('id', { count: 'exact', head: true })
+      .eq('partner_company_id', cid)
+      .eq('status', 'pending')
+    setPendingConnections(count || 0)
+  }
+  useEffect(() => { refreshPendingConnections() }, [profile?.company_id, viewAs?.id])
+
   // ── Effective identity ──────────────────────────────────────────────────────
   // Super admin can "view as" any company. While impersonating, the whole app
   // behaves as that company's account type. realIsSuper stays true so the exit
@@ -1089,7 +1105,9 @@ export default function App() {
     dashboard: 'Dashboard', shipments: 'Shipments', templates: 'PO Templates',
     growers: 'Growers', logistics: 'Logistics Partners',
     statements: 'Account Statements', claims: 'Claims & Credit Notes',
-    products: 'Product Catalogue', users: 'Users', invitations: 'Invitations', settings: 'Settings', companies: 'Companies'
+    products: 'Product Catalogue', users: 'Users', invitations: 'Invitations',
+    connections: 'Connection Requests',
+    settings: 'Settings', companies: 'Companies'
   }
 
   // Tailored grower/logistics portal pages. These are scaffolds until Wave 3/4 and
@@ -1137,6 +1155,7 @@ export default function App() {
           profile={effectiveProfile}
           accountType={accountType}
           pendingCount={isPortal ? 0 : pendingCount}
+          pendingConnections={pendingConnections}
           onSignOut={handleSignOut}
           showViewAs={realIsSuper && !viewAs}
           onOpenViewAs={() => setShowViewAs(true)}
@@ -1177,6 +1196,7 @@ export default function App() {
             {page === 'products' && <ProductsPage products={products} />}
             {page === 'templates' && <TemplatesPage companyId={effectiveProfile?.company_id || null} adminAll={realIsSuper && !viewAs} />}
             {page === 'invitations' && <InvitationsPage realProfile={profile} viewAs={viewAs} />}
+            {page === 'connections' && <ConnectionRequestsPage companyId={effectiveProfile?.company_id || null} onRespond={refreshPendingConnections} />}
             {page === 'statements' && <ComingSoon icon="file-invoice" title="Account Statements" sub="Monthly farm payment reconciliation — coming next" />}
             {page === 'claims' && <ComingSoon icon="alert-triangle" title="Claims & Credit Notes" sub="Quality claims management — coming next" />}
             {page === 'users' && <ComingSoon icon="users" title={accountType === 'buyer' ? 'Team' : 'Users'} sub="User management — coming next" />}
