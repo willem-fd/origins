@@ -1171,7 +1171,11 @@ export default function App() {
             </div>
           </div>
           <div className="page">
-            {isPortal ? (
+            {/* Pages available to every account type (incl. grower/logistics portals) */}
+            {page === 'connections' && <ConnectionRequestsPage companyId={effectiveProfile?.company_id || null} onRespond={refreshPendingConnections} />}
+            {page === 'settings'    && <CompanySettingsPage companyId={effectiveProfile?.company_id || null} />}
+
+            {!['connections', 'settings'].includes(page) && (isPortal ? (
               <ComingSoon {...(PORTAL[accountType].page[page] || PORTAL[accountType].page.dashboard)} />
             ) : (
             <>
@@ -1196,13 +1200,11 @@ export default function App() {
             {page === 'products' && <ProductsPage products={products} />}
             {page === 'templates' && <TemplatesPage companyId={effectiveProfile?.company_id || null} adminAll={realIsSuper && !viewAs} />}
             {page === 'invitations' && <InvitationsPage realProfile={profile} viewAs={viewAs} />}
-            {page === 'connections' && <ConnectionRequestsPage companyId={effectiveProfile?.company_id || null} onRespond={refreshPendingConnections} />}
             {page === 'statements' && <ComingSoon icon="file-invoice" title="Account Statements" sub="Monthly farm payment reconciliation — coming next" />}
             {page === 'claims' && <ComingSoon icon="alert-triangle" title="Claims & Credit Notes" sub="Quality claims management — coming next" />}
             {page === 'users' && <ComingSoon icon="users" title={accountType === 'buyer' ? 'Team' : 'Users'} sub="User management — coming next" />}
-            {page === 'settings' && <CompanySettingsPage companyId={effectiveProfile?.company_id || null} />}
             </>
-            )}
+            ))}
           </div>
         </div>
       </div>
