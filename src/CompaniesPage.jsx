@@ -2,18 +2,10 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { flag, COUNTRIES } from './constants'
 import CompanyProfile from './CompanyProfile'
+import CountryCombobox from './CountryCombobox'
 
 const TYPE_LABELS = { buyer: 'Buyer', grower: 'Grower', logistics: 'Logistics' }
 const TYPE_COLORS = { buyer: 'var(--green)', grower: 'var(--brown)', logistics: '#2563EB' }
-
-function CountrySelect({ value, onChange }) {
-  return (
-    <select className="form-select" value={value || ''} onChange={e => onChange(e.target.value)}>
-      <option value="">— Select country —</option>
-      {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
-    </select>
-  )
-}
 
 export default function CompaniesPage({ initialType = 'all', viewAsBuyerId = null }) {
   const [companies, setCompanies] = useState([])
@@ -172,7 +164,7 @@ export default function CompaniesPage({ initialType = 'all', viewAsBuyerId = nul
                 </div>
                 <div className="form-group">
                   <label className="form-label">Country</label>
-                  <CountrySelect value={f.country} onChange={v => set('country', v)} />
+                  <CountryCombobox value={f.country} onChange={v => set('country', v)} />
                 </div>
               </div>
               <div className="form-row">

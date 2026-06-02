@@ -1,15 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { COUNTRIES, flag, validateEmail, validatePhone } from './constants'
-
-function CountrySelect({ value, onChange }) {
-  return (
-    <select className="form-select" value={value || ''} onChange={e => onChange(e.target.value)}>
-      <option value="">— Select country —</option>
-      {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
-    </select>
-  )
-}
+import CountryCombobox from './CountryCombobox'
 
 function Section({ title, children }) {
   return (
@@ -44,7 +36,7 @@ function AddrFields({ type, addr, setAddr }) {
         </div>
         <div className="form-group">
           <label className="form-label">Country</label>
-          <CountrySelect value={addr?.country} onChange={v => setAddr(type, 'country', v)} />
+          <CountryCombobox value={addr?.country} onChange={v => setAddr(type, 'country', v)} />
         </div>
       </div>
     </div>

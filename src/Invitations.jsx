@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { Field, eyeOn, eyeOff } from './Auth'
-import { COUNTRIES } from './constants'
+import CountryCombobox from './CountryCombobox'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INVITATIONS — Wave 2
@@ -343,10 +343,7 @@ export function AcceptInvitation({ token, onDone }) {
                 <label className="auth-field">
                   <span className="auth-field-label">Country</span>
                   <span className="auth-field-wrap">
-                    <select className="auth-input" value={country} onChange={e => setCountry(e.target.value)}>
-                      <option value="">— Select country —</option>
-                      {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
-                    </select>
+                    <CountryCombobox value={country} onChange={setCountry} className="auth-input" placeholder="Type to search…" />
                   </span>
                 </label>
                 <Field label="City"                       type="text" value={city}        onChange={setCity}        placeholder="e.g. Aalsmeer" />

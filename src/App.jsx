@@ -7,6 +7,7 @@ import CompanyProfile from './CompanyProfile'
 import TemplatesPage from './Templates'
 import InvitationsPage, { AcceptInvitation } from './Invitations'
 import MyProfile from './MyProfile'
+import CountryCombobox from './CountryCombobox'
 import Auth from './Auth'
 import { COUNTRIES, SHIP_STATUSES, STATUS_LABELS, STATUS_BADGE, flag, fmt, validateEmail, validatePhone } from './constants'
 
@@ -16,16 +17,6 @@ function StatusBadge({ status }) {
     <span className={`badge ${STATUS_BADGE[status] || 'badge-draft'}`}>
       {STATUS_LABELS[status] || status}
     </span>
-  )
-}
-
-// ── Country Select ────────────────────────────────────────────────────────────
-function CountrySelect({ value, onChange, className = 'form-select', placeholder = '— Select country —' }) {
-  return (
-    <select className={className} value={value || ''} onChange={e => onChange(e.target.value)}>
-      <option value="">{placeholder}</option>
-      {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
-    </select>
   )
 }
 
@@ -267,7 +258,7 @@ function ShipmentForm({ initial, logistics, buyerCompanyId, onClose, onSave, tit
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Origin country</label>
-              <CountrySelect value={f.origin_country} onChange={v => { set('origin_country', v); set('origin_airport', airports[v]?.[0] || '') }} />
+              <CountryCombobox value={f.origin_country} onChange={v => { set('origin_country', v); set('origin_airport', airports[v]?.[0] || '') }} />
             </div>
             <div className="form-group">
               <label className="form-label">Departure airport</label>
