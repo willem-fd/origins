@@ -138,4 +138,27 @@ begin
 end $$;
 grant execute on function public.respond_to_connection_request(uuid, boolean) to authenticated;
 
+
+-- ── 4. List pending connection requests directed at current company ──────────
+create or replace function public.list_connection_requests()
+returns table (
+  id                    uuid,
+  buyer_company_id      uuid,
+  buyer_company_name    text,
+  buyer_company_brand   text,
+  buyer_company_country text,
+  partner_type          text,
+  created_at            timestamptz
+)
+language sql stable security definer set search_path = public
+as $$
+  select r.id, r.buyer_company_id, c.name, c.brand_name, c.country, r.partner_type, r.created_at
+    from company_relationships r
+    join companies c on c.id = r.buyer_company_id
+   where r.partner_company_id = public.current_company_id()
+     and r.status = 'pending'
+   order by r.created_at desc
+$$;
+grant execute on function public.list_connection_requests() to authenticated;
+
 commit;
