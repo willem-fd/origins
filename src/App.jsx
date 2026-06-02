@@ -103,8 +103,8 @@ function Sidebar({ page, setPage, profile, accountType, pendingCount, onSignOut,
           {menuOpen && (
             <div style={{
               position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 6,
-              background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.08)', padding: 4, zIndex: 10
+              background: 'var(--green-dark)', border: '0.5px solid rgba(255,255,255,0.12)', borderRadius: 8,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.24)', padding: 4, zIndex: 10
             }}>
               <div className="nav-item" style={{ margin: 0 }} onClick={() => { setMenuOpen(false); onOpenProfile?.() }}>
                 <i className="ti ti-user" aria-hidden="true" />My profile
