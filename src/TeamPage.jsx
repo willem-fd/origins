@@ -12,20 +12,32 @@ const ROLE_DESCRIPTIONS = {
 // Super admin (no view-as) sees a ComingSoon scaffold — global users page TBD.
 export default function TeamPage({ companyId, profile }) {
   const [users, setUsers] = useState(null)
+  const [pending, setPending] = useState([])
   const [showInvite, setShowInvite] = useState(false)
+  const [copiedFor, setCopiedFor] = useState(null)
   const isAdmin = !!profile?.is_super_admin || profile?.role === 'admin'
 
   const refresh = async () => {
     if (!companyId) { setUsers([]); return }
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, first_name, last_name, role, email')
-      .eq('company_id', companyId)
-      .order('role', { ascending: true })
-    if (error) { setUsers([]); return }
-    setUsers(data || [])
+    const [{ data: u }, { data: inv }] = await Promise.all([
+      supabase.from('users').select('id, first_name, last_name, role, email').eq('company_id', companyId).order('role', { ascending: true }),
+      supabase.from('company_invitations').select('id, email, target_role, token, expires_at, created_at, status').eq('company_id', companyId).eq('status', 'pending').order('created_at', { ascending: false }),
+    ])
+    setUsers(u || [])
+    setPending(inv || [])
   }
   useEffect(() => { refresh() }, [companyId])
+
+  const copyLink = async (token) => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/?invite=${token}`)
+      setCopiedFor(token); setTimeout(() => setCopiedFor(null), 1500)
+    } catch {}
+  }
+  const cancelInvite = async (id) => {
+    await supabase.from('company_invitations').update({ status: 'cancelled' }).eq('id', id)
+    refresh()
+  }
 
   if (!companyId) {
     return <div className="card" style={{ padding: '80px 20px' }}><div className="empty"><i className="ti ti-users" /><div className="empty-title">Users</div><div className="empty-sub">Global users page — coming next</div></div></div>
@@ -88,12 +100,45 @@ export default function TeamPage({ companyId, profile }) {
         </div>
       )}
 
+      {isAdmin && pending.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>
+            Pending invitations
+          </div>
+          <div className="card">
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Email</th><th>Role</th><th>Sent</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {pending.map(inv => (
+                    <tr key={inv.id}>
+                      <td>{inv.email}</td>
+                      <td><span className="badge badge-pending">{ROLE_LABELS[inv.target_role] || inv.target_role}</span></td>
+                      <td className="td-mono" style={{ fontSize: 12.5 }}>{new Date(inv.created_at).toLocaleDateString()}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => copyLink(inv.token)}>
+                          <i className="ti ti-link" aria-hidden="true" /> {copiedFor === inv.token ? 'Copied!' : 'Copy link'}
+                        </button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => cancelInvite(inv.id)}>
+                          <i className="ti ti-x" aria-hidden="true" /> Cancel
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showInvite && (
         <InviteTeammateModal
           companyId={companyId}
           inviterUserId={profile?.id}
-          onClose={() => setShowInvite(false)}
-          onSent={() => { setShowInvite(false); refresh() }}
+          onClose={() => { setShowInvite(false); refresh() }}
         />
       )}
     </div>
@@ -123,7 +168,8 @@ function InviteTeammateModal({ companyId, inviterUserId, onClose, onSent }) {
     if (error) { setErr(error.message); return }
     const link = `${window.location.origin}/?invite=${data.token}`
     setResult({ link })
-    onSent?.(data)
+    // NOTE: don't call onSent here — it would close the modal before the user
+    // sees the link. The parent refreshes when the modal is closed.
   }
 
   const copy = async () => {
