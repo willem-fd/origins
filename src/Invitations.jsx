@@ -454,7 +454,12 @@ export function AcceptInvitation({ token, onDone }) {
             <div style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 4 }}>
               You've been invited to join <strong>Origins</strong>
               {invite.inviter_company_name ? <> by <strong>{invite.inviter_company_name}</strong></> : null}
-              {invite.new_company_name ? <> as <strong>{invite.new_company_name}</strong> ({TYPE_LABELS[invite.new_company_type]})</> : null}.
+              {invite.new_company_name
+                ? <> as <strong>{invite.new_company_name}</strong> ({TYPE_LABELS[invite.new_company_type]})</>
+                : invite.target_role
+                  ? <> as a <strong>{invite.target_role === 'admin' ? 'team admin' : 'team member'}</strong></>
+                  : null
+              }.
             </div>
 
             {errMsg && <div className="auth-alert" role="alert">{errMsg}</div>}

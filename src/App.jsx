@@ -7,6 +7,7 @@ import CompanyProfile from './CompanyProfile'
 import TemplatesPage from './Templates'
 import InvitationsPage, { AcceptInvitation, ConnectionRequestsPage } from './Invitations'
 import MyProfile from './MyProfile'
+import TeamPage from './TeamPage'
 import CountryCombobox from './CountryCombobox'
 import Auth from './Auth'
 import { COUNTRIES, SHIP_STATUSES, STATUS_LABELS, STATUS_BADGE, flag, fmt, validateEmail, validatePhone } from './constants'
@@ -1174,8 +1175,9 @@ export default function App() {
             {/* Pages available to every account type (incl. grower/logistics portals) */}
             {page === 'connections' && <ConnectionRequestsPage companyId={effectiveProfile?.company_id || null} onRespond={refreshPendingConnections} />}
             {page === 'settings'    && <CompanySettingsPage companyId={effectiveProfile?.company_id || null} />}
+            {page === 'users'       && <TeamPage companyId={effectiveProfile?.company_id || null} profile={effectiveProfile} />}
 
-            {!['connections', 'settings'].includes(page) && (isPortal ? (
+            {!['connections', 'settings', 'users'].includes(page) && (isPortal ? (
               <ComingSoon {...(PORTAL[accountType].page[page] || PORTAL[accountType].page.dashboard)} />
             ) : (
             <>
@@ -1202,7 +1204,6 @@ export default function App() {
             {page === 'invitations' && <InvitationsPage realProfile={profile} viewAs={viewAs} />}
             {page === 'statements' && <ComingSoon icon="file-invoice" title="Account Statements" sub="Monthly farm payment reconciliation — coming next" />}
             {page === 'claims' && <ComingSoon icon="alert-triangle" title="Claims & Credit Notes" sub="Quality claims management — coming next" />}
-            {page === 'users' && <ComingSoon icon="users" title={accountType === 'buyer' ? 'Team' : 'Users'} sub="User management — coming next" />}
             </>
             ))}
           </div>
