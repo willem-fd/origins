@@ -177,7 +177,12 @@ function StatusDot({ status, onChange }) {
 }
 
 // ── Sortable product row ─────────────────────────────────────────────────────
-function ProductRow({ row, rowIndex, products, onUpdate, onDelete, onKeyDown, inputRef }) {
+const STATE_PILL = {
+  pending:   { label: 'Pending',   cls: 'badge-pending' },
+  active:    { label: 'Confirmed', cls: 'badge-active' },
+  cancelled: { label: 'Cancelled', cls: 'badge-completed' },
+}
+function ProductRow({ row, rowIndex, products, showState, onUpdate, onDelete, onKeyDown, inputRef }) {
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging
   } = useSortable({ id: row._id, data: { type: 'row', farmId: row.farm_id, boxNr: row.box_nr } })
@@ -192,6 +197,12 @@ function ProductRow({ row, rowIndex, products, onUpdate, onDelete, onKeyDown, in
     <div ref={setNodeRef} style={style} className={`product-row${isDragging ? ' is-dragging' : ''}`}>
       <span className="row-drag" {...attributes} {...listeners}><i className="ti ti-grip-vertical" aria-hidden="true" /></span>
       <span className="row-num">{rowIndex + 1}</span>
+
+      {showState && row.state && (
+        <span className={`badge ${STATE_PILL[row.state]?.cls || 'badge-draft'}`} style={{ marginRight: 4 }}>
+          {STATE_PILL[row.state]?.label || row.state}
+        </span>
+      )}
 
       {/* Order type */}
       <div className="cell" style={{ width: 42 }}>
@@ -268,7 +279,7 @@ function ProductRow({ row, rowIndex, products, onUpdate, onDelete, onKeyDown, in
 }
 
 // ── Droppable farm block ─────────────────────────────────────────────────────
-function FarmBlock({ block, blockIndex, farms, products, onUpdate, onDelete, onAddFarm }) {
+function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, onDelete, onAddFarm }) {
   const [growerProducts, setGrowerProducts] = useState(null) // null = loading, [] = none set
 
   // Load this grower's product catalogue
@@ -433,6 +444,7 @@ function FarmBlock({ block, blockIndex, farms, products, onUpdate, onDelete, onA
                       row={row}
                       rowIndex={rowIdx}
                       products={availableProducts}
+                      showState={showState}
                       onUpdate={updated => updateRow(boxIdx, row._id, updated)}
                       onDelete={rowId => deleteRow(boxIdx, rowId)}
                       onKeyDown={handleKeyDown}
@@ -503,6 +515,7 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
           product_id: po.product_id,
           order_type: po.order_type || 'open_market',
           status: po.status || 'pending',
+          state: po.state || 'pending',
           length_cm: po.length_cm || '',
           stems_ordered: po.stems_ordered || '',
           stems_per_bunch: po.stems_per_bunch || 25,
@@ -737,6 +750,7 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
                 blockIndex={idx}
                 farms={farms}
                 products={products}
+                showState={status !== 'draft'}
                 onUpdate={updated => updateBlock(idx, updated)}
                 onDelete={farmId => deleteBlock(farmId)}
               />
