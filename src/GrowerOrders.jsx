@@ -28,11 +28,12 @@ export default function GrowerOrdersPage({ companyId, profile }) {
 
     // 2. Fetch the parent shipments (filter out drafts explicitly as well)
     const shipmentIds = [...new Set(pos.map(p => p.shipment_id))]
-    const { data: ships } = await supabase
+    const { data: ships, error: shErr } = await supabase
       .from('shipments')
-      .select('id, status, origin_country, origin_airport, destination_airport, dep_date, buyer_company_id')
+      .select('id, status, reference, origin_country, origin_airport, destination_airport, departure_date, buyer_company_id')
       .in('id', shipmentIds)
       .neq('status', 'draft')
+    if (shErr) { setErr(shErr.message); setShipments([]); return }
     if (!ships || ships.length === 0) { setShipments([]); return }
 
     // 3. Fetch the buyer companies
@@ -84,14 +85,17 @@ export default function GrowerOrdersPage({ companyId, profile }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {shipments.map(({ shipment, lines }) => {
           const buyerName = shipment.buyer?.brand_name || shipment.buyer?.name || '—'
-          const depDate = shipment.dep_date ? new Date(shipment.dep_date).toLocaleDateString() : '—'
+          const depDate = shipment.departure_date ? new Date(shipment.departure_date).toLocaleDateString() : '—'
           const route = `${shipment.origin_airport || '—'} → ${shipment.destination_airport || '—'}`
           const pending = lines.filter(l => l.state === 'pending').length
           return (
             <div key={shipment.id} className="card">
               <div style={{ padding: '14px 18px', borderBottom: '0.5px solid var(--border)', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{buyerName}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>
+                    {buyerName}
+                    {shipment.reference && <span style={{ fontWeight: 400, color: 'var(--text-3)', marginLeft: 8 }}>· {shipment.reference}</span>}
+                  </div>
                   <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
                     {flag(shipment.origin_country)} {route} · Departs {depDate}
                   </div>
