@@ -489,19 +489,6 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
         <button className="btn btn-ghost btn-sm" onClick={onBack}><i className="ti ti-arrow-left" /> Shipments</button>
         <div style={{ flex: 1 }} />
-        {s.status === 'in_transit' && (
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => {
-              if (window.confirm('This will reopen the PO list for editing. Growers will see the shipment is back in Active. Continue?')) {
-                updateStatus('active')
-              }
-            }}
-            title="Reopen purchasing — flips this shipment back to Active so the PO list can be edited"
-          >
-            <i className="ti ti-lock-open" /> Reopen purchasing
-          </button>
-        )}
         <button className="btn btn-ghost btn-sm" onClick={() => setShowSplit(true)}>
           <i className="ti ti-git-branch" /> Split shipment
         </button>
@@ -580,6 +567,11 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
               products={products}
               onStartPurchasing={s.status === 'draft' ? () => updateStatus('active') : null}
               onClosePurchasing={s.status === 'active' ? () => setConfirmClose(true) : null}
+              onReopenPurchasing={s.status === 'in_transit' ? () => {
+                if (window.confirm('This will reopen the PO list for editing. Growers will see the shipment is back in Active. Continue?')) {
+                  updateStatus('active')
+                }
+              } : null}
             />
           </div>
         )}

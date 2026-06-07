@@ -4,6 +4,8 @@ import { flag, STATUS_LABELS, STATUS_BADGE } from './constants'
 
 const STATE_LABEL = { pending: 'Pending', active: 'Confirmed', cancelled: 'Cancelled' }
 const STATE_BADGE = { pending: 'badge-pending', active: 'badge-active', cancelled: 'badge-completed' }
+const ORDER_TYPE_SHORT = { open_market: 'OM', standing: 'SO', repeating: 'RO' }
+const ORDER_TYPE_LABEL = { open_market: 'Open market', standing: 'Standing order', repeating: 'Repeating order' }
 
 // Top-level page: routes between list and detail
 export default function GrowerOrdersPage({ companyId, profile }) {
@@ -266,40 +268,73 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
               <div className="table-wrap">
                 <table>
                   <thead><tr>
-                    <th>Box</th><th>Mark</th><th>Type</th><th>Product</th><th>Length</th><th>Stems</th><th>St/B</th><th>Price</th><th>Notes</th><th>State</th><th></th>
+                    <th style={{ width: 36 }}>#</th>
+                    <th style={{ width: 42 }}>Type</th>
+                    <th>Product</th>
+                    <th>Length</th>
+                    <th>Stems</th>
+                    <th>St/B</th>
+                    <th>Price</th>
+                    <th>Notes</th>
+                    <th>State</th>
+                    <th></th>
                   </tr></thead>
-                  <tbody>
-                    {lines.map(l => (
-                      <tr key={l.id}>
-                        <td className="td-mono">{l.box_nr ? `#${l.box_nr}` : '—'}</td>
-                        <td className="td-mono" style={{ color: 'var(--text-2)' }}>{l.boxmark || <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
-                        <td className="td-mono">{l.box_type || '—'}</td>
-                        <td>{l.products?.name || '—'}{l.products?.vbn_code && <span style={{ color: 'var(--text-3)', marginLeft: 6, fontSize: 11.5 }}>{l.products.vbn_code}</span>}</td>
-                        <td className="td-mono">{l.length_cm ?? '—'}</td>
-                        <td className="td-mono">{l.stems_ordered ?? '—'}</td>
-                        <td className="td-mono">{l.stems_per_bunch ?? '—'}</td>
-                        <td className="td-mono">{l.price_ordered != null ? `$${Number(l.price_ordered).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</td>
-                        <td style={{ fontSize: 12.5, color: 'var(--text-2)', maxWidth: 200 }}>{l.notes_buyer || <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
-                        <td>
-                          <span className={`badge ${STATE_BADGE[l.state] || 'badge-draft'}`} style={{ minWidth: 78, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
-                            {STATE_LABEL[l.state] || l.state}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          {isAdmin && l.state === 'pending' && (
-                            <>
-                              <button className="btn btn-ghost btn-sm" disabled={busy === l.id} onClick={() => act(l.id, 'po_cancel')}>
-                                <i className="ti ti-x" aria-hidden="true" /> Cancel
-                              </button>
-                              <button className="btn btn-primary btn-sm" disabled={busy === l.id} onClick={() => act(l.id, 'po_confirm')}>
-                                <i className="ti ti-check" aria-hidden="true" /> Confirm
-                              </button>
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
+                  {(() => {
+                    // Group lines by box_nr preserving order
+                    const groups = []
+                    const seen = new Map()
+                    for (const l of lines) {
+                      const key = l.box_nr ?? 0
+                      if (!seen.has(key)) { seen.set(key, groups.length); groups.push({ box_nr: l.box_nr, box_type: l.box_type, boxmark: l.boxmark, rows: [] }) }
+                      groups[seen.get(key)].rows.push(l)
+                    }
+                    return groups.map((g, gi) => {
+                      const boxStems = g.rows.reduce((a, r) => a + (Number(r.stems_ordered) || 0), 0)
+                      return (
+                        <tbody key={`box-${g.box_nr}-${gi}`}>
+                          <tr style={{ background: 'var(--green-deep)', color: '#E8DDD0' }}>
+                            <td colSpan={10} style={{ padding: '8px 14px', fontSize: 12 }}>
+                              <span style={{ fontWeight: 600, fontFamily: 'var(--mono)' }}>Box {g.box_nr ?? '—'}</span>
+                              <span style={{ marginLeft: 14, fontFamily: 'var(--mono)', textTransform: 'uppercase', color: '#C9A96E' }}>{g.boxmark || '—'}</span>
+                              <span style={{ marginLeft: 14, padding: '1px 8px', borderRadius: 4, background: 'rgba(201,169,110,0.18)', fontSize: 11, fontWeight: 600, color: '#C9A96E', letterSpacing: 0.5 }}>{g.box_type || '—'}</span>
+                              <span style={{ marginLeft: 14, fontFamily: 'var(--mono)', color: 'rgba(255,255,255,0.55)' }}>{boxStems.toLocaleString('de-DE')} stems</span>
+                            </td>
+                          </tr>
+                          {g.rows.map((l, ri) => (
+                            <tr key={l.id}>
+                              <td className="td-mono" style={{ color: 'var(--text-3)' }}>{ri + 1}</td>
+                              <td className="td-mono" title={ORDER_TYPE_LABEL[l.order_type]}>
+                                <span style={{ fontWeight: 700, fontSize: 11 }}>{ORDER_TYPE_SHORT[l.order_type] || '—'}</span>
+                              </td>
+                              <td>{l.products?.name || '—'}{l.products?.vbn_code && <span style={{ color: 'var(--text-3)', marginLeft: 6, fontSize: 11.5 }}>{l.products.vbn_code}</span>}</td>
+                              <td className="td-mono">{l.length_cm ?? '—'}</td>
+                              <td className="td-mono">{l.stems_ordered ?? '—'}</td>
+                              <td className="td-mono">{l.stems_per_bunch ?? '—'}</td>
+                              <td className="td-mono">{l.price_ordered != null ? `$${Number(l.price_ordered).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</td>
+                              <td style={{ fontSize: 12.5, color: 'var(--text-2)', maxWidth: 200 }}>{l.notes_buyer || <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
+                              <td>
+                                <span className={`badge ${STATE_BADGE[l.state] || 'badge-draft'}`} style={{ minWidth: 78, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
+                                  {STATE_LABEL[l.state] || l.state}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                {isAdmin && l.state === 'pending' && (
+                                  <>
+                                    <button className="btn btn-ghost btn-sm" disabled={busy === l.id} onClick={() => act(l.id, 'po_cancel')}>
+                                      <i className="ti ti-x" aria-hidden="true" /> Cancel
+                                    </button>
+                                    <button className="btn btn-primary btn-sm" disabled={busy === l.id} onClick={() => act(l.id, 'po_confirm')}>
+                                      <i className="ti ti-check" aria-hidden="true" /> Confirm
+                                    </button>
+                                  </>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      )
+                    })
+                  })()}
                 </table>
               </div>
             )}

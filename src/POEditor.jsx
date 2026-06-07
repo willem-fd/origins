@@ -202,10 +202,10 @@ const STATE_PILL = {
   active:    { label: 'Confirmed', cls: 'badge-active' },
   cancelled: { label: 'Cancelled', cls: 'badge-completed' },
 }
-function ProductRow({ row, rowIndex, products, showState, onUpdate, onDelete, onKeyDown, inputRef }) {
+function ProductRow({ row, rowIndex, products, showState, locked, onUpdate, onDelete, onKeyDown, inputRef }) {
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging
-  } = useSortable({ id: row._id, data: { type: 'row', farmId: row.farm_id, boxNr: row.box_nr } })
+  } = useSortable({ id: row._id, data: { type: 'row', farmId: row.farm_id, boxNr: row.box_nr }, disabled: locked })
 
   const style = { transform: DndCSS.Transform.toString(transform), transition }
   const product = products.find(p => p.id === row.product_id)
@@ -215,53 +215,61 @@ function ProductRow({ row, rowIndex, products, showState, onUpdate, onDelete, on
 
   return (
     <div ref={setNodeRef} style={style} className={`product-row${isDragging ? ' is-dragging' : ''}`}>
-      <span className="row-drag" {...attributes} {...listeners}><i className="ti ti-grip-vertical" aria-hidden="true" /></span>
+      {locked
+        ? <span className="row-drag" style={{ opacity: 0.25, cursor: 'default' }}><i className="ti ti-grip-vertical" aria-hidden="true" /></span>
+        : <span className="row-drag" {...attributes} {...listeners}><i className="ti ti-grip-vertical" aria-hidden="true" /></span>}
       <span className="row-num">{rowIndex + 1}</span>
 
       {/* Order type */}
       <div className="cell" style={{ width: 42 }}>
         <select className="cell-select" style={{ fontSize: 11, fontWeight: 700, color: 'inherit' }}
-          value={row.order_type} onChange={e => set('order_type', e.target.value)}>
+          value={row.order_type} onChange={e => set('order_type', e.target.value)} disabled={locked}>
           {ORDER_TYPES.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
         </select>
       </div>
 
       {/* Product */}
       <div className="cell" style={{ flex: 3, minWidth: 180 }}>
-        <ProductCombobox
-          value={row.product_id}
-          products={products}
-          onChange={v => set('product_id', v)}
-          inputRef={inputRef}
-        />
+        {locked ? (
+          <span style={{ padding: '0 10px', fontSize: 12.5 }}>
+            {product ? `${product.name}${product.vbn_code ? ` (${product.vbn_code})` : ''}` : <span style={{ color: 'var(--text-3)' }}>—</span>}
+          </span>
+        ) : (
+          <ProductCombobox
+            value={row.product_id}
+            products={products}
+            onChange={v => set('product_id', v)}
+            inputRef={inputRef}
+          />
+        )}
       </div>
 
       {/* Length */}
       <div className="cell" style={{ width: 72 }}>
         <input className="cell-input mono" type="number" placeholder="cm" value={row.length_cm}
           onChange={e => set('length_cm', e.target.value)}
-          onKeyDown={e => onKeyDown(e, row._id, 'length_cm')} />
+          onKeyDown={e => onKeyDown(e, row._id, 'length_cm')} readOnly={locked} />
       </div>
 
       {/* Stems */}
       <div className="cell" style={{ width: 80 }}>
         <input className="cell-input mono" type="number" placeholder="—" value={row.stems_ordered}
           onChange={e => set('stems_ordered', e.target.value)}
-          onKeyDown={e => onKeyDown(e, row._id, 'stems_ordered')} />
+          onKeyDown={e => onKeyDown(e, row._id, 'stems_ordered')} readOnly={locked} />
       </div>
 
       {/* St/Bunch */}
       <div className="cell" style={{ width: 70 }}>
         <input className="cell-input mono" type="number" placeholder="25" value={row.stems_per_bunch}
           onChange={e => set('stems_per_bunch', e.target.value)}
-          onKeyDown={e => onKeyDown(e, row._id, 'stems_per_bunch')} />
+          onKeyDown={e => onKeyDown(e, row._id, 'stems_per_bunch')} readOnly={locked} />
       </div>
 
       {/* Price */}
       <div className="cell" style={{ width: 82 }}>
         <input className="cell-input mono" type="text" inputMode="decimal" placeholder="0,00" value={row.price_ordered}
           onChange={e => set('price_ordered', e.target.value.replace('.', ','))}
-          onKeyDown={e => onKeyDown(e, row._id, 'price_ordered')} />
+          onKeyDown={e => onKeyDown(e, row._id, 'price_ordered')} readOnly={locked} />
       </div>
 
       {/* Total */}
@@ -277,7 +285,7 @@ function ProductRow({ row, rowIndex, products, showState, onUpdate, onDelete, on
       <div className="cell" style={{ flex: 1, minWidth: 80 }}>
         <input className="cell-input" placeholder="notes" value={row.notes_buyer}
           onChange={e => set('notes_buyer', e.target.value)}
-          onKeyDown={e => onKeyDown(e, row._id, 'notes_buyer')} />
+          onKeyDown={e => onKeyDown(e, row._id, 'notes_buyer')} readOnly={locked} />
       </div>
 
       {/* State (W3 lifecycle: pending / confirmed / cancelled) */}
@@ -291,15 +299,17 @@ function ProductRow({ row, rowIndex, products, showState, onUpdate, onDelete, on
         )}
       </div>
 
-      <button className="row-delete" onClick={() => onDelete(row._id)} title="Remove">
-        <i className="ti ti-x" aria-hidden="true" />
-      </button>
+      {locked
+        ? <span style={{ width: 30 }} />
+        : <button className="row-delete" onClick={() => onDelete(row._id)} title="Remove">
+            <i className="ti ti-x" aria-hidden="true" />
+          </button>}
     </div>
   )
 }
 
 // ── Droppable farm block ─────────────────────────────────────────────────────
-function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, onDelete, onAddFarm }) {
+function FarmBlock({ block, blockIndex, farms, products, showState, locked, onUpdate, onDelete, onAddFarm }) {
   const [growerProducts, setGrowerProducts] = useState(null) // null = loading, [] = none set
 
   // Load this grower's product catalogue
@@ -320,8 +330,10 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
     load()
   }, [block.farmId])
 
-  // Use grower's catalogue if it has products, otherwise fall back to full catalogue
-  const availableProducts = growerProducts && growerProducts.length > 0 ? growerProducts : products
+  // Per-grower product catalogue filter is deferred (see W3 backlog).
+  // For now, every grower can be assigned any product. We still fetch
+  // growerProducts to show the "N varieties" hint on the header.
+  const availableProducts = products
   const { setNodeRef, isOver } = useDroppable({ id: `farm_${block.farmId}`, data: { type: 'farm', farmId: block.farmId } })
   const inputRefs = useRef({})
 
@@ -416,9 +428,11 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
         <button className="farm-collapse-btn" onClick={e => { e.stopPropagation(); onUpdate({ ...block, collapsed: !block.collapsed }) }} title={block.collapsed ? 'Expand' : 'Collapse'}>
           <i className={`ti ti-chevron-${block.collapsed ? 'right' : 'down'}`} aria-hidden="true" style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)' }} />
         </button>
-        <button className="farm-collapse-btn" onClick={e => { e.stopPropagation(); deleteGrower() }} title="Remove grower from shipment">
-          <i className="ti ti-trash" aria-hidden="true" style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }} />
-        </button>
+        {!locked && (
+          <button className="farm-collapse-btn" onClick={e => { e.stopPropagation(); deleteGrower() }} title="Remove grower from shipment">
+            <i className="ti ti-trash" aria-hidden="true" style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }} />
+          </button>
+        )}
       </div>
 
       {!block.collapsed && (
@@ -447,7 +461,8 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
                   <span className="box-number">Box {box.boxNr}</span>
                   <select className="box-type-select" value={box.box_type}
                     onChange={e => updateBox(boxIdx, { box_type: e.target.value })}
-                    onClick={e => e.stopPropagation()}>
+                    onClick={e => e.stopPropagation()}
+                    disabled={locked}>
                     {BOX_TYPES.map(t => <option key={t}>{t}</option>)}
                   </select>
                   <input
@@ -456,13 +471,16 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
                     value={box.boxmark}
                     onChange={e => updateBox(boxIdx, { boxmark: e.target.value })}
                     onClick={e => e.stopPropagation()}
+                    readOnly={locked}
                   />
                   <span className="box-stems">
                     {formatInt(box.rows.reduce((a, r) => a + (Number(r.stems_ordered) || 0), 0))} stems
                   </span>
-                  <button className="box-delete-btn" onClick={() => deleteBox(boxIdx)} title="Remove box">
-                    <i className="ti ti-trash" aria-hidden="true" />
-                  </button>
+                  {!locked && (
+                    <button className="box-delete-btn" onClick={() => deleteBox(boxIdx)} title="Remove box">
+                      <i className="ti ti-trash" aria-hidden="true" />
+                    </button>
+                  )}
                 </div>
 
                 <div className="product-rows">
@@ -473,6 +491,7 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
                       rowIndex={rowIdx}
                       products={availableProducts}
                       showState={showState}
+                      locked={locked}
                       onUpdate={updated => updateRow(boxIdx, row._id, updated)}
                       onDelete={rowId => deleteRow(boxIdx, rowId)}
                       onKeyDown={handleKeyDown}
@@ -481,16 +500,20 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
                   ))}
                 </div>
 
-                <button className="add-row-btn" onClick={() => addRow(boxIdx)}>
-                  <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 13 }} /> Add product line
-                </button>
+                {!locked && (
+                  <button className="add-row-btn" onClick={() => addRow(boxIdx)}>
+                    <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 13 }} /> Add product line
+                  </button>
+                )}
               </div>
             ))}
           </SortableContext>
 
-          <button className="add-box-btn" onClick={addBox}>
-            <i className="ti ti-package" aria-hidden="true" style={{ fontSize: 14 }} /> Add box
-          </button>
+          {!locked && (
+            <button className="add-box-btn" onClick={addBox}>
+              <i className="ti ti-package" aria-hidden="true" style={{ fontSize: 14 }} /> Add box
+            </button>
+          )}
         </>
       )}
     </div>
@@ -498,7 +521,11 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
 }
 
 // ── Main PO Editor ───────────────────────────────────────────────────────────
-export default function POEditor({ shipmentId, companyId, status, farms, products, onStartPurchasing, onClosePurchasing }) {
+export default function POEditor({ shipmentId, companyId, status, farms, products, onStartPurchasing, onClosePurchasing, onReopenPurchasing }) {
+  // The PO list is editable only in Draft and Active. After Close purchasing
+  // (status = in_transit) and beyond, the list is locked. Buyer must Reopen
+  // purchasing to make changes.
+  const locked = status !== 'draft' && status !== 'active'
   const [blocks, setBlocks] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -753,9 +780,11 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
           <button className="btn btn-ghost btn-sm" onClick={loadPOs} title="Refresh">
             <i className="ti ti-refresh" aria-hidden="true" /> Refresh
           </button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowSaveTpl(true)} disabled={blocks.length === 0}>
-            <i className="ti ti-device-floppy" aria-hidden="true" /> Save as template
-          </button>
+          {!locked && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowSaveTpl(true)} disabled={blocks.length === 0}>
+              <i className="ti ti-device-floppy" aria-hidden="true" /> Save as template
+            </button>
+          )}
           {(status === 'draft' || status === 'active') && (
             <button className="btn btn-ghost btn-sm" onClick={() => setShowAddFarm(true)}>
               <i className="ti ti-building-factory" aria-hidden="true" /> Add grower
@@ -768,6 +797,10 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
           ) : onClosePurchasing ? (
             <button className="btn btn-primary btn-sm" onClick={onClosePurchasing}>
               <i className="ti ti-lock" aria-hidden="true" /> Close purchasing
+            </button>
+          ) : onReopenPurchasing ? (
+            <button className="btn btn-primary btn-sm" onClick={onReopenPurchasing}>
+              <i className="ti ti-lock-open" aria-hidden="true" /> Reopen purchasing
             </button>
           ) : null}
         </div>
@@ -793,6 +826,7 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
                 farms={farms}
                 products={products}
                 showState={status !== 'draft'}
+                locked={locked}
                 onUpdate={updated => updateBlock(idx, updated)}
                 onDelete={farmId => deleteBlock(farmId)}
               />
