@@ -198,12 +198,6 @@ function ProductRow({ row, rowIndex, products, showState, onUpdate, onDelete, on
       <span className="row-drag" {...attributes} {...listeners}><i className="ti ti-grip-vertical" aria-hidden="true" /></span>
       <span className="row-num">{rowIndex + 1}</span>
 
-      {showState && row.state && (
-        <span className={`badge ${STATE_PILL[row.state]?.cls || 'badge-draft'}`} style={{ marginRight: 4 }}>
-          {STATE_PILL[row.state]?.label || row.state}
-        </span>
-      )}
-
       {/* Order type */}
       <div className="cell" style={{ width: 42 }}>
         <select className="cell-select" style={{ fontSize: 11, fontWeight: 700, color: 'inherit' }}
@@ -266,9 +260,15 @@ function ProductRow({ row, rowIndex, products, showState, onUpdate, onDelete, on
           onKeyDown={e => onKeyDown(e, row._id, 'notes_buyer')} />
       </div>
 
-      {/* Status */}
-      <div className="cell" style={{ width: 44, justifyContent: 'center' }}>
-        <StatusDot status={row.status} onChange={v => set('status', v)} />
+      {/* State (W3 lifecycle: pending / confirmed / cancelled) */}
+      <div className="cell" style={{ width: 110, justifyContent: 'center' }}>
+        {showState && row.state ? (
+          <span className={`badge ${STATE_PILL[row.state]?.cls || 'badge-draft'}`} style={{ minWidth: 78, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
+            {STATE_PILL[row.state]?.label || row.state}
+          </span>
+        ) : (
+          <span style={{ color: 'var(--text-3)', fontSize: 11 }}>—</span>
+        )}
       </div>
 
       <button className="row-delete" onClick={() => onDelete(row._id)} title="Remove">
@@ -351,9 +351,17 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
   }
 
   const deleteBox = (boxIdx) => {
-    if (block.boxes.length === 1) { onDelete(block.farmId); return } // last box → remove the grower block
+    // Box-trash deletes only this box — never the grower.
+    // If it was the last box, the grower stub remains with the "+ Add box" affordance.
     const boxes = block.boxes.filter((_, i) => i !== boxIdx)
     onUpdate({ ...block, boxes })
+  }
+
+  const deleteGrower = () => {
+    const name = block.farmName || 'this grower'
+    if (window.confirm(`Remove ${name} and all their boxes from this shipment? This cannot be undone.`)) {
+      onDelete(block.farmId)
+    }
   }
 
   const handleKeyDown = (e, rowId, field) => {
@@ -385,11 +393,11 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
           <span>${totalCost.toFixed(2)}</span>
           <span>{confirmedRows}/{totalRows} confirmed</span>
         </div>
-        <button className="farm-collapse-btn" onClick={e => { e.stopPropagation(); onUpdate({ ...block, collapsed: !block.collapsed }) }}>
-          <i className={`ti ti-chevron-${block.collapsed ? 'right' : 'down'}`} aria-hidden="true" style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }} />
+        <button className="farm-collapse-btn" onClick={e => { e.stopPropagation(); onUpdate({ ...block, collapsed: !block.collapsed }) }} title={block.collapsed ? 'Expand' : 'Collapse'}>
+          <i className={`ti ti-chevron-${block.collapsed ? 'right' : 'down'}`} aria-hidden="true" style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)' }} />
         </button>
-        <button className="farm-collapse-btn" onClick={e => { e.stopPropagation(); onDelete(block.farmId) }} title="Remove farm">
-          <i className="ti ti-x" aria-hidden="true" style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }} />
+        <button className="farm-collapse-btn" onClick={e => { e.stopPropagation(); deleteGrower() }} title="Remove grower from shipment">
+          <i className="ti ti-trash" aria-hidden="true" style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }} />
         </button>
       </div>
 
@@ -407,7 +415,7 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
             <span style={{ width: 82, padding: '6px 10px' }}>Price $</span>
             <span style={{ width: 88, padding: '6px 10px' }}>Total $</span>
             <span style={{ flex: 1, minWidth: 80, padding: '6px 10px' }}>Notes</span>
-            <span style={{ width: 44, padding: '6px 10px', textAlign: 'center' }}>St.</span>
+            <span style={{ width: 110, padding: '6px 10px', textAlign: 'center' }}>State</span>
             <span style={{ width: 30 }} />
           </div>
 
@@ -417,18 +425,18 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
                 <div className="box-header">
                   <span className="box-drag-handle"><i className="ti ti-grip-horizontal" aria-hidden="true" /></span>
                   <span className="box-number">Box {box.boxNr}</span>
-                  <input
-                    className="box-mark-input"
-                    placeholder="Boxmark"
-                    value={box.boxmark}
-                    onChange={e => updateBox(boxIdx, { boxmark: e.target.value })}
-                    onClick={e => e.stopPropagation()}
-                  />
                   <select className="box-type-select" value={box.box_type}
                     onChange={e => updateBox(boxIdx, { box_type: e.target.value })}
                     onClick={e => e.stopPropagation()}>
                     {BOX_TYPES.map(t => <option key={t}>{t}</option>)}
                   </select>
+                  <input
+                    className="box-mark-input"
+                    placeholder="Mark"
+                    value={box.boxmark}
+                    onChange={e => updateBox(boxIdx, { boxmark: e.target.value })}
+                    onClick={e => e.stopPropagation()}
+                  />
                   <span className="box-stems">
                     {box.rows.reduce((a, r) => a + (Number(r.stems_ordered) || 0), 0).toLocaleString()} stems
                   </span>
@@ -470,7 +478,7 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
 }
 
 // ── Main PO Editor ───────────────────────────────────────────────────────────
-export default function POEditor({ shipmentId, companyId, status, farms, products, onStartPurchasing, onClosePurchasing }) {
+export default function POEditor({ shipmentId, companyId, status, farms, products, onStartPurchasing, onClosePurchasing, refreshSignal }) {
   const [blocks, setBlocks] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -534,6 +542,16 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
   }, [shipmentId, farms])
 
   useEffect(() => { loadPOs() }, [loadPOs])
+
+  // Re-fetch when parent bumps the refresh signal (manual refresh button).
+  useEffect(() => { if (refreshSignal) loadPOs() }, [refreshSignal, loadPOs])
+
+  // Auto-refresh when the window regains focus (no polling).
+  useEffect(() => {
+    const onFocus = () => loadPOs()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [loadPOs])
 
   // Apply a template's lines to this shipment, then refresh
   const applyTemplate = useCallback(async (templateId) => {

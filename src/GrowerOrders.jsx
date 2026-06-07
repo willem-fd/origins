@@ -20,7 +20,7 @@ export default function GrowerOrdersPage({ companyId, profile }) {
     // 1. Lines for this grower (RLS already hides draft-shipment lines)
     const { data: pos, error: poErr } = await supabase
       .from('purchase_orders')
-      .select('id, state, price_ordered, stems_ordered, stems_per_bunch, order_type, box_type, box_nr, boxmark, shipment_id, sort_order, products(name, vbn_code)')
+      .select('id, state, price_ordered, stems_ordered, stems_per_bunch, length_cm, notes_buyer, order_type, box_type, box_nr, boxmark, shipment_id, sort_order, products(name, vbn_code)')
       .eq('grower_company_id', companyId)
       .order('shipment_id').order('box_nr').order('sort_order')
     if (poErr) { setErr(poErr.message); setShipments([]); return }
@@ -50,6 +50,13 @@ export default function GrowerOrdersPage({ companyId, profile }) {
     setShipments(Array.from(shipmentMap.values()))
   }
   useEffect(() => { refresh() }, [companyId])
+
+  // Auto-refresh when the tab regains focus (cheap, no polling).
+  useEffect(() => {
+    const onFocus = () => refresh()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [companyId])
 
   const act = async (poId, fn) => {
     setBusy(poId); setErr('')
@@ -82,6 +89,12 @@ export default function GrowerOrdersPage({ companyId, profile }) {
     <div>
       {err && <div style={{ background: '#fef2f2', color: '#b91c1c', padding: '10px 14px', borderRadius: 7, fontSize: 13, marginBottom: 14 }}>{err}</div>}
 
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <button className="btn btn-ghost btn-sm" onClick={refresh} title="Refresh">
+          <i className="ti ti-refresh" aria-hidden="true" /> Refresh
+        </button>
+      </div>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {shipments.map(({ shipment, lines }) => {
           const buyerName = shipment.buyer?.brand_name || shipment.buyer?.name || '—'
@@ -109,19 +122,21 @@ export default function GrowerOrdersPage({ companyId, profile }) {
                 <table>
                   <thead>
                     <tr>
-                      <th>Box</th><th>Product</th><th>Stems</th><th>St/B</th><th>Type</th><th>Price</th><th>State</th><th></th>
+                      <th>Box</th><th>Type</th><th>Product</th><th>Len cm</th><th>Stems</th><th>St/B</th><th>Price</th><th>Notes</th><th>State</th><th></th>
                     </tr>
                   </thead>
                   <tbody>
                     {lines.map(l => (
                       <tr key={l.id}>
                         <td className="td-mono">{l.box_nr ? `#${l.box_nr}` : '—'}{l.boxmark ? <span style={{ color: 'var(--text-3)', marginLeft: 6 }}>{l.boxmark}</span> : null}</td>
+                        <td className="td-mono">{l.box_type || '—'}</td>
                         <td>{l.products?.name || '—'}{l.products?.vbn_code && <span style={{ color: 'var(--text-3)', marginLeft: 6, fontSize: 11.5 }}>{l.products.vbn_code}</span>}</td>
+                        <td className="td-mono">{l.length_cm ?? '—'}</td>
                         <td className="td-mono">{l.stems_ordered ?? '—'}</td>
                         <td className="td-mono">{l.stems_per_bunch ?? '—'}</td>
-                        <td className="td-mono">{l.box_type || '—'}</td>
                         <td className="td-mono">{l.price_ordered != null ? `$${Number(l.price_ordered).toFixed(2)}` : '—'}</td>
-                        <td><span className={`badge ${STATE_BADGE[l.state] || 'badge-draft'}`}>{STATE_LABEL[l.state] || l.state}</span></td>
+                        <td style={{ fontSize: 12.5, color: 'var(--text-2)', maxWidth: 200 }}>{l.notes_buyer || <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
+                        <td><span className={`badge ${STATE_BADGE[l.state] || 'badge-draft'}`} style={{ minWidth: 78, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>{STATE_LABEL[l.state] || l.state}</span></td>
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                           {isAdmin && l.state === 'pending' && (
                             <>

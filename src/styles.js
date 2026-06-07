@@ -454,6 +454,8 @@ export const CSS = `
   .farm-header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--green-deep); cursor: pointer; user-select: none; }
   .farm-header-name { font-size: 13px; font-weight: 500; color: #E8DDD0; flex: 1; }
   .farm-header-stats { font-size: 11.5px; color: rgba(255,255,255,0.35); font-family: var(--mono); display: flex; gap: 14px; }
+  .farm-collapse-btn { background: transparent; border: none; padding: 4px 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; transition: background 0.15s ease; }
+  .farm-collapse-btn:hover { background: rgba(255,255,255,0.08); }
   .box-block { border-bottom: 0.5px solid var(--border); }
   .box-block:last-child { border-bottom: none; }
   .box-header { display: flex; align-items: center; background: var(--surface-2); border-bottom: 0.5px solid var(--border); font-size: 12px; }
