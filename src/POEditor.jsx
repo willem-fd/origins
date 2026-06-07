@@ -30,6 +30,26 @@ const OT_MAP = Object.fromEntries(ORDER_TYPES.map(o => [o.key, o]))
 
 const BOX_TYPES = ['FB','HB','QB','EB']
 
+// ── European number formatting ────────────────────────────────────────────────
+// Display "1.234,56" (thousand: ".", decimal: ","). Accepts user input with
+// either "." or "," as decimal separator and returns a Number.
+export function parseEur(s) {
+  if (s == null || s === '') return null
+  // Strip thousand separators (any "."), then convert "," → "."
+  const cleaned = String(s).replace(/\./g, '').replace(',', '.')
+  const n = Number(cleaned)
+  return Number.isFinite(n) ? n : null
+}
+export function formatEur(n, decimals = 2, prefix = '') {
+  if (n == null || !Number.isFinite(Number(n))) return prefix ? `${prefix}—` : '—'
+  return prefix + Number(n).toLocaleString('de-DE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+}
+// For integers like stems counts: "1.234"
+export function formatInt(n) {
+  if (n == null || !Number.isFinite(Number(n))) return '—'
+  return Number(n).toLocaleString('de-DE', { maximumFractionDigits: 0 })
+}
+
 // ── Product Combobox ──────────────────────────────────────────────────────────
 function ProductCombobox({ value, products, onChange, inputRef }) {
   const [query, setQuery] = useState('')
@@ -218,14 +238,14 @@ function ProductRow({ row, rowIndex, products, showState, onUpdate, onDelete, on
 
       {/* Length */}
       <div className="cell" style={{ width: 72 }}>
-        <input className="cell-input mono" type="number" placeholder="60" value={row.length_cm}
+        <input className="cell-input mono" type="number" placeholder="cm" value={row.length_cm}
           onChange={e => set('length_cm', e.target.value)}
           onKeyDown={e => onKeyDown(e, row._id, 'length_cm')} />
       </div>
 
       {/* Stems */}
       <div className="cell" style={{ width: 80 }}>
-        <input className="cell-input mono" type="number" placeholder="100" value={row.stems_ordered}
+        <input className="cell-input mono" type="number" placeholder="—" value={row.stems_ordered}
           onChange={e => set('stems_ordered', e.target.value)}
           onKeyDown={e => onKeyDown(e, row._id, 'stems_ordered')} />
       </div>
@@ -239,8 +259,8 @@ function ProductRow({ row, rowIndex, products, showState, onUpdate, onDelete, on
 
       {/* Price */}
       <div className="cell" style={{ width: 82 }}>
-        <input className="cell-input mono" type="number" step="0.001" placeholder="0.45" value={row.price_ordered}
-          onChange={e => set('price_ordered', e.target.value)}
+        <input className="cell-input mono" type="text" inputMode="decimal" placeholder="0,00" value={row.price_ordered}
+          onChange={e => set('price_ordered', e.target.value.replace('.', ','))}
           onKeyDown={e => onKeyDown(e, row._id, 'price_ordered')} />
       </div>
 
@@ -248,14 +268,14 @@ function ProductRow({ row, rowIndex, products, showState, onUpdate, onDelete, on
       <div className="cell" style={{ width: 88, background: 'var(--surface-2)' }}>
         <span style={{ padding: '0 10px', fontSize: 12, fontFamily: 'var(--mono)', color: 'var(--brown-dark)', fontWeight: 500 }}>
           {row.stems_ordered && row.price_ordered
-            ? `$${(Number(row.stems_ordered) * Number(row.price_ordered)).toFixed(2)}`
+            ? formatEur(Number(row.stems_ordered) * Number(String(row.price_ordered).replace(',', '.')), 2, '$')
             : '—'}
         </span>
       </div>
 
       {/* Notes */}
       <div className="cell" style={{ flex: 1, minWidth: 80 }}>
-        <input className="cell-input" placeholder="notes…" value={row.notes_buyer}
+        <input className="cell-input" placeholder="notes" value={row.notes_buyer}
           onChange={e => set('notes_buyer', e.target.value)}
           onKeyDown={e => onKeyDown(e, row._id, 'notes_buyer')} />
       </div>
@@ -306,7 +326,7 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
   const inputRefs = useRef({})
 
   const totalStems = block.boxes.reduce((a, b) => a + b.rows.reduce((c, r) => c + (Number(r.stems_ordered) || 0), 0), 0)
-  const totalCost = block.boxes.reduce((a, b) => a + b.rows.reduce((c, r) => c + ((Number(r.stems_ordered) || 0) * (Number(r.price_ordered) || 0)), 0), 0)
+  const totalCost = block.boxes.reduce((a, b) => a + b.rows.reduce((c, r) => c + ((Number(r.stems_ordered) || 0) * (parseEur(r.price_ordered) || 0)), 0), 0)
   const confirmedRows = block.boxes.reduce((a, b) => a + b.rows.filter(r => r.status === 'confirmed').length, 0)
   const totalRows = block.boxes.reduce((a, b) => a + b.rows.length, 0)
 
@@ -389,8 +409,8 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
           </span>
         )}
         <div className="farm-header-stats">
-          <span>{totalStems.toLocaleString()} stems</span>
-          <span>${totalCost.toFixed(2)}</span>
+          <span>{formatInt(totalStems)} stems</span>
+          <span>{formatEur(totalCost, 2, '$')}</span>
           <span>{confirmedRows}/{totalRows} confirmed</span>
         </div>
         <button className="farm-collapse-btn" onClick={e => { e.stopPropagation(); onUpdate({ ...block, collapsed: !block.collapsed }) }} title={block.collapsed ? 'Expand' : 'Collapse'}>
@@ -409,7 +429,7 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
             <span style={{ width: 28 }}>#</span>
             <span style={{ width: 42, padding: '6px 8px' }}>Type</span>
             <span style={{ flex: 3, minWidth: 180, padding: '6px 10px' }}>Variety / Product</span>
-            <span style={{ width: 72, padding: '6px 10px' }}>Len cm</span>
+            <span style={{ width: 72, padding: '6px 10px' }}>Length</span>
             <span style={{ width: 80, padding: '6px 10px' }}>Stems</span>
             <span style={{ width: 70, padding: '6px 10px' }}>St/Bunch</span>
             <span style={{ width: 82, padding: '6px 10px' }}>Price $</span>
@@ -438,7 +458,7 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
                     onClick={e => e.stopPropagation()}
                   />
                   <span className="box-stems">
-                    {box.rows.reduce((a, r) => a + (Number(r.stems_ordered) || 0), 0).toLocaleString()} stems
+                    {formatInt(box.rows.reduce((a, r) => a + (Number(r.stems_ordered) || 0), 0))} stems
                   </span>
                   <button className="box-delete-btn" onClick={() => deleteBox(boxIdx)} title="Remove box">
                     <i className="ti ti-trash" aria-hidden="true" />
@@ -478,7 +498,7 @@ function FarmBlock({ block, blockIndex, farms, products, showState, onUpdate, on
 }
 
 // ── Main PO Editor ───────────────────────────────────────────────────────────
-export default function POEditor({ shipmentId, companyId, status, farms, products, onStartPurchasing, onClosePurchasing, refreshSignal }) {
+export default function POEditor({ shipmentId, companyId, status, farms, products, onStartPurchasing, onClosePurchasing }) {
   const [blocks, setBlocks] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -527,7 +547,7 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
           length_cm: po.length_cm || '',
           stems_ordered: po.stems_ordered || '',
           stems_per_bunch: po.stems_per_bunch || 25,
-          price_ordered: po.price_ordered || '',
+          price_ordered: po.price_ordered != null ? String(po.price_ordered).replace('.', ',') : '',
           notes_buyer: po.notes_buyer || '',
           sort_order: po.sort_order || 0,
         })
@@ -542,9 +562,6 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
   }, [shipmentId, farms])
 
   useEffect(() => { loadPOs() }, [loadPOs])
-
-  // Re-fetch when parent bumps the refresh signal (manual refresh button).
-  useEffect(() => { if (refreshSignal) loadPOs() }, [refreshSignal, loadPOs])
 
   // Auto-refresh when the window regains focus (no polling).
   useEffect(() => {
@@ -618,7 +635,7 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
               length_cm: row.length_cm ? parseInt(row.length_cm) : null,
               stems_ordered: row.stems_ordered ? parseInt(row.stems_ordered) : null,
               stems_per_bunch: row.stems_per_bunch ? parseInt(row.stems_per_bunch) : 25,
-              price_ordered: row.price_ordered ? parseFloat(row.price_ordered) : null,
+              price_ordered: parseEur(row.price_ordered),
               notes_buyer: row.notes_buyer || null,
               sort_order: rowIdx,
             }
@@ -705,10 +722,10 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
   // Totals
   const allRows = blocks.flatMap(b => b.boxes.flatMap(box => box.rows))
   const totalStemsOrdered = allRows.reduce((a, r) => a + (Number(r.stems_ordered) || 0), 0)
-  const totalCostOrdered = allRows.reduce((a, r) => a + ((Number(r.stems_ordered) || 0) * (Number(r.price_ordered) || 0)), 0)
+  const totalCostOrdered = allRows.reduce((a, r) => a + ((Number(r.stems_ordered) || 0) * (parseEur(r.price_ordered) || 0)), 0)
   const confirmed = allRows.filter(r => r.status === 'confirmed')
   const totalStemsConfirmed = confirmed.reduce((a, r) => a + (Number(r.stems_ordered) || 0), 0)
-  const totalCostConfirmed = confirmed.reduce((a, r) => a + ((Number(r.stems_ordered) || 0) * (Number(r.price_ordered) || 0)), 0)
+  const totalCostConfirmed = confirmed.reduce((a, r) => a + ((Number(r.stems_ordered) || 0) * (parseEur(r.price_ordered) || 0)), 0)
 
   if (loading) return <div className="empty"><i className="ti ti-loader" /><div className="empty-title">Loading purchase orders…</div></div>
 
@@ -733,12 +750,17 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
               <i className="ti ti-template" aria-hidden="true" /> Load template
             </button>
           )}
+          <button className="btn btn-ghost btn-sm" onClick={loadPOs} title="Refresh">
+            <i className="ti ti-refresh" aria-hidden="true" /> Refresh
+          </button>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowSaveTpl(true)} disabled={blocks.length === 0}>
             <i className="ti ti-device-floppy" aria-hidden="true" /> Save as template
           </button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowAddFarm(true)}>
-            <i className="ti ti-building-factory" aria-hidden="true" /> Add grower
-          </button>
+          {(status === 'draft' || status === 'active') && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowAddFarm(true)}>
+              <i className="ti ti-building-factory" aria-hidden="true" /> Add grower
+            </button>
+          )}
           {status === 'draft' && onStartPurchasing ? (
             <button className="btn btn-primary btn-sm" onClick={onStartPurchasing} disabled={blocks.length === 0} title={blocks.length === 0 ? 'Add at least one grower first' : 'Send this list to growers and begin negotiation'}>
               <i className="ti ti-send" aria-hidden="true" /> Start purchasing
@@ -755,9 +777,11 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
             <i className="ti ti-list-check" />
             <div className="empty-title">Purchase Order List is empty</div>
             <div className="empty-sub">Add a grower to start building the order list for this shipment</div>
-            <button className="btn btn-brown" style={{ marginTop: 12 }} onClick={() => setShowAddFarm(true)}>
-              <i className="ti ti-building-factory" aria-hidden="true" /> Add first grower
-            </button>
+            {(status === 'draft' || status === 'active') && (
+              <button className="btn btn-brown" style={{ marginTop: 12 }} onClick={() => setShowAddFarm(true)}>
+                <i className="ti ti-building-factory" aria-hidden="true" /> Add first grower
+              </button>
+            )}
           </div>
         ) : (
           <>
@@ -773,9 +797,11 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
                 onDelete={farmId => deleteBlock(farmId)}
               />
             ))}
-            <button className="add-farm-btn" onClick={() => setShowAddFarm(true)}>
-              <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 15 }} /> Add another grower
-            </button>
+            {(status === 'draft' || status === 'active') && (
+              <button className="add-farm-btn" onClick={() => setShowAddFarm(true)}>
+                <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 15 }} /> Add another grower
+              </button>
+            )}
           </>
         )}
       </div>
@@ -783,10 +809,10 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
       {/* Totals — outside the editor card so never clipped */}
       {blocks.length > 0 && (
         <div className="totals-bar" style={{ marginTop: 12 }}>
-          <div className="total-item"><div className="total-label">Stems ordered</div><div className="total-val">{totalStemsOrdered.toLocaleString()}</div></div>
-          <div className="total-item"><div className="total-label">Stems confirmed</div><div className="total-val hi">{totalStemsConfirmed.toLocaleString()}</div></div>
-          <div className="total-item"><div className="total-label">Cost ordered</div><div className="total-val">${totalCostOrdered.toFixed(2)}</div></div>
-          <div className="total-item"><div className="total-label">Cost confirmed</div><div className="total-val hi">${totalCostConfirmed.toFixed(2)}</div></div>
+          <div className="total-item"><div className="total-label">Stems ordered</div><div className="total-val">{formatInt(totalStemsOrdered)}</div></div>
+          <div className="total-item"><div className="total-label">Stems confirmed</div><div className="total-val hi">{formatInt(totalStemsConfirmed)}</div></div>
+          <div className="total-item"><div className="total-label">Cost ordered</div><div className="total-val">{formatEur(totalCostOrdered, 2, '$')}</div></div>
+          <div className="total-item"><div className="total-label">Cost confirmed</div><div className="total-val hi">{formatEur(totalCostConfirmed, 2, '$')}</div></div>
           <div className="total-item"><div className="total-label">Growers</div><div className="total-val">{blocks.length}</div></div>
           <div className="total-item"><div className="total-label">Order lines</div><div className="total-val">{allRows.length}</div></div>
         </div>

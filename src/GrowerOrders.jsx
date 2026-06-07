@@ -106,7 +106,7 @@ function GrowerShipmentsList({ companyId, onOpen }) {
         <div className="table-wrap">
           <table>
             <thead><tr>
-              <th>Buyer</th><th>Reference</th><th>Route</th><th>Departure</th><th>AWB</th><th>Status</th><th>Lines</th><th></th>
+              <th>Buyer</th><th>Reference</th><th>Route</th><th>Drop Date</th><th>AWB</th><th>Status</th><th>Order Lines</th><th></th>
             </tr></thead>
             <tbody>
               {list.map(s => {
@@ -116,7 +116,7 @@ function GrowerShipmentsList({ companyId, onOpen }) {
                     <td>{buyerName}</td>
                     <td className="td-mono">{s.reference || '—'}</td>
                     <td className="td-mono">{flag(s.origin_country)} {s.origin_airport || '—'} → {s.destination_airport || '—'}</td>
-                    <td className="td-mono">{s.departure_date ? new Date(s.departure_date).toLocaleDateString() : '—'}</td>
+                    <td className="td-mono">{s.drop_date ? new Date(s.drop_date).toLocaleDateString() : '—'}</td>
                     <td className="td-mono">{s.mawb || '—'}</td>
                     <td><span className={`badge ${STATUS_BADGE[s.status] || 'badge-draft'}`}>{STATUS_LABELS[s.status] || s.status}</span></td>
                     <td>
@@ -235,8 +235,6 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
           { label: 'HAWB',              value: shipment.hawb || '—',           mono: true },
           { label: 'Cargo agent',       value: shipment.cargo_agent?.name || '—' },
           { label: 'Airline',           value: shipment.airline?.name || '—' },
-          { label: 'Customs agent',     value: shipment.customs_agent?.name || '—' },
-          { label: 'Chargeable weight', value: shipment.chargeable_weight ? `${shipment.chargeable_weight} kg` : '—', mono: true },
         ].map(m => (
           <div className="meta-item" key={m.label}>
             <div className="meta-label">{m.label}</div>
@@ -268,18 +266,19 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
               <div className="table-wrap">
                 <table>
                   <thead><tr>
-                    <th>Box</th><th>Type</th><th>Product</th><th>Len cm</th><th>Stems</th><th>St/B</th><th>Price</th><th>Notes</th><th>State</th><th></th>
+                    <th>Box</th><th>Mark</th><th>Type</th><th>Product</th><th>Length</th><th>Stems</th><th>St/B</th><th>Price</th><th>Notes</th><th>State</th><th></th>
                   </tr></thead>
                   <tbody>
                     {lines.map(l => (
                       <tr key={l.id}>
-                        <td className="td-mono">{l.box_nr ? `#${l.box_nr}` : '—'}{l.boxmark ? <span style={{ color: 'var(--text-3)', marginLeft: 6 }}>{l.boxmark}</span> : null}</td>
+                        <td className="td-mono">{l.box_nr ? `#${l.box_nr}` : '—'}</td>
+                        <td className="td-mono" style={{ color: 'var(--text-2)' }}>{l.boxmark || <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
                         <td className="td-mono">{l.box_type || '—'}</td>
                         <td>{l.products?.name || '—'}{l.products?.vbn_code && <span style={{ color: 'var(--text-3)', marginLeft: 6, fontSize: 11.5 }}>{l.products.vbn_code}</span>}</td>
                         <td className="td-mono">{l.length_cm ?? '—'}</td>
                         <td className="td-mono">{l.stems_ordered ?? '—'}</td>
                         <td className="td-mono">{l.stems_per_bunch ?? '—'}</td>
-                        <td className="td-mono">{l.price_ordered != null ? `$${Number(l.price_ordered).toFixed(2)}` : '—'}</td>
+                        <td className="td-mono">{l.price_ordered != null ? `$${Number(l.price_ordered).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</td>
                         <td style={{ fontSize: 12.5, color: 'var(--text-2)', maxWidth: 200 }}>{l.notes_buyer || <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
                         <td>
                           <span className={`badge ${STATE_BADGE[l.state] || 'badge-draft'}`} style={{ minWidth: 78, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>

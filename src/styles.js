@@ -477,6 +477,7 @@ export const CSS = `
   .cell { padding: 0; border-right: 0.5px solid var(--border); display: flex; align-items: center; position: relative; }
   .cell:last-child { border-right: none; }
   .cell-input { width: 100%; padding: 9px 10px; font-size: 12.5px; border: none; background: transparent; outline: none; color: var(--text-1); font-family: var(--font); }
+  .cell-input::placeholder { color: rgba(0,0,0,0.18); font-weight: 400; }
   .cell-input:focus { background: #FFFEF8; box-shadow: inset 0 0 0 2px var(--brown); }
   .cell-input.mono { font-family: var(--mono); }
   .cell-select { width: 100%; padding: 9px 8px; font-size: 12.5px; border: none; background: transparent; outline: none; cursor: pointer; color: var(--text-1); appearance: none; }

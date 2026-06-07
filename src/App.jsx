@@ -424,7 +424,6 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
   const [showSplit, setShowSplit] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
   const [confirmReceived, setConfirmReceived] = useState(false)
-  const [refreshSignal, setRefreshSignal] = useState(0)
 
   const airline     = logistics.find(l => l.id === s.airline_id)
   const cargoAgent  = logistics.find(l => l.id === s.cargo_agent_id)
@@ -490,9 +489,19 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
         <button className="btn btn-ghost btn-sm" onClick={onBack}><i className="ti ti-arrow-left" /> Shipments</button>
         <div style={{ flex: 1 }} />
-        <button className="btn btn-ghost btn-sm" onClick={() => setRefreshSignal(n => n + 1)} title="Refresh">
-          <i className="ti ti-refresh" /> Refresh
-        </button>
+        {s.status === 'in_transit' && (
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              if (window.confirm('This will reopen the PO list for editing. Growers will see the shipment is back in Active. Continue?')) {
+                updateStatus('active')
+              }
+            }}
+            title="Reopen purchasing — flips this shipment back to Active so the PO list can be edited"
+          >
+            <i className="ti ti-lock-open" /> Reopen purchasing
+          </button>
+        )}
         <button className="btn btn-ghost btn-sm" onClick={() => setShowSplit(true)}>
           <i className="ti ti-git-branch" /> Split shipment
         </button>
@@ -569,7 +578,6 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
               status={s.status}
               farms={growers}
               products={products}
-              refreshSignal={refreshSignal}
               onStartPurchasing={s.status === 'draft' ? () => updateStatus('active') : null}
               onClosePurchasing={s.status === 'active' ? () => setConfirmClose(true) : null}
             />
