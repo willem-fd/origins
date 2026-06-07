@@ -56,7 +56,7 @@ begin
     insert into po_actions (po_id, actor_user_id, actor_company_id, action, fields_json)
       select po.id, auth.uid(), new.buyer_company_id, 'ask',
              jsonb_build_object(
-               'price', po.price, 'stems', po.stems, 'stems_per_bunch', po.stems_per_bunch,
+               'price_ordered', po.price_ordered, 'stems_ordered', po.stems_ordered, 'stems_per_bunch', po.stems_per_bunch,
                'order_type', po.order_type, 'box_type', po.box_type,
                'product_id', po.product_id, 'grower_company_id', po.grower_company_id
              )
@@ -77,7 +77,7 @@ execute function public.on_shipment_activate();
 insert into po_actions (po_id, actor_user_id, actor_company_id, action, fields_json, created_at)
 select po.id, null, s.buyer_company_id, 'ask',
        jsonb_build_object(
-         'price', po.price, 'stems', po.stems, 'stems_per_bunch', po.stems_per_bunch,
+         'price_ordered', po.price_ordered, 'stems_ordered', po.stems_ordered, 'stems_per_bunch', po.stems_per_bunch,
          'order_type', po.order_type, 'box_type', po.box_type,
          'product_id', po.product_id, 'grower_company_id', po.grower_company_id
        ),
@@ -130,7 +130,7 @@ begin
 
   insert into po_actions (po_id, actor_user_id, actor_company_id, action, fields_json)
     values (p_po_id, auth.uid(), caller_company, 'confirm',
-            jsonb_build_object('price', po.price, 'stems', po.stems, 'stems_per_bunch', po.stems_per_bunch));
+            jsonb_build_object('price_ordered', po.price_ordered, 'stems_ordered', po.stems_ordered, 'stems_per_bunch', po.stems_per_bunch));
 
   return json_build_object('ok', true);
 end $$;

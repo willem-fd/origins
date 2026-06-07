@@ -20,7 +20,7 @@ export default function GrowerOrdersPage({ companyId, profile }) {
     // 1. Lines for this grower (RLS already hides draft-shipment lines)
     const { data: pos, error: poErr } = await supabase
       .from('purchase_orders')
-      .select('id, state, price, stems, stems_per_bunch, order_type, box_type, box_nr, boxmark, shipment_id, sort_order, products(name, vbn_code)')
+      .select('id, state, price_ordered, stems_ordered, stems_per_bunch, order_type, box_type, box_nr, boxmark, shipment_id, sort_order, products(name, vbn_code)')
       .eq('grower_company_id', companyId)
       .order('shipment_id').order('box_nr').order('sort_order')
     if (poErr) { setErr(poErr.message); setShipments([]); return }
@@ -113,10 +113,10 @@ export default function GrowerOrdersPage({ companyId, profile }) {
                       <tr key={l.id}>
                         <td className="td-mono">{l.box_nr ? `#${l.box_nr}` : '—'}{l.boxmark ? <span style={{ color: 'var(--text-3)', marginLeft: 6 }}>{l.boxmark}</span> : null}</td>
                         <td>{l.products?.name || '—'}{l.products?.vbn_code && <span style={{ color: 'var(--text-3)', marginLeft: 6, fontSize: 11.5 }}>{l.products.vbn_code}</span>}</td>
-                        <td className="td-mono">{l.stems ?? '—'}</td>
+                        <td className="td-mono">{l.stems_ordered ?? '—'}</td>
                         <td className="td-mono">{l.stems_per_bunch ?? '—'}</td>
                         <td className="td-mono">{l.box_type || '—'}</td>
-                        <td className="td-mono">{l.price != null ? `$${Number(l.price).toFixed(2)}` : '—'}</td>
+                        <td className="td-mono">{l.price_ordered != null ? `$${Number(l.price_ordered).toFixed(2)}` : '—'}</td>
                         <td><span className={`badge ${STATE_BADGE[l.state] || 'badge-draft'}`}>{STATE_LABEL[l.state] || l.state}</span></td>
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                           {isAdmin && l.state === 'pending' && (
