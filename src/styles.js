@@ -464,8 +464,8 @@ export const CSS = `
   .box-mark-input { padding: 6px 10px; font-size: 12px; font-weight: 500; border: none; background: transparent; outline: none; color: var(--brown-dark); font-family: var(--mono); text-transform: uppercase; width: 90px; border-left: 0.5px solid var(--border); border-right: 0.5px solid var(--border); }
   .box-mark-input:focus { background: var(--brown-pale); }
   .box-type-select { padding: 6px 8px; font-size: 11.5px; border: none; background: transparent; outline: none; cursor: pointer; color: var(--text-2); border-right: 0.5px solid var(--border); font-family: var(--mono); font-weight: 500; }
-  .box-stems { padding: 8px 12px; font-size: 11.5px; color: var(--text-3); font-family: var(--mono); margin-left: auto; }
-  .box-delete-btn { padding: 8px 12px; background: none; border: none; cursor: pointer; color: var(--text-3); font-size: 15px; }
+  .box-stems { padding: 8px 12px; font-size: 11.5px; color: var(--text-3); font-family: var(--mono); }
+  .box-delete-btn { padding: 8px 12px; background: none; border: none; cursor: pointer; color: var(--text-3); font-size: 15px; margin-left: auto; }
   .box-delete-btn:hover { color: #b91c1c; }
   .product-rows { display: flex; flex-direction: column; }
   .product-row { display: flex; align-items: center; gap: 0; border-bottom: 0.5px solid var(--border); transition: background 0.1s; position: relative; }

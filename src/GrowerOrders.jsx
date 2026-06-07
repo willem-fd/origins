@@ -298,7 +298,7 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
                                 <span style={{ padding: '8px 14px', fontSize: 11.5, fontWeight: 600, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>Box {g.box_nr ?? '—'}</span>
                                 <span style={{ padding: '6px 10px', fontSize: 12, fontWeight: 500, color: 'var(--brown-dark)', fontFamily: 'var(--mono)', textTransform: 'uppercase', borderLeft: '0.5px solid var(--border)', borderRight: '0.5px solid var(--border)', minWidth: 90 }}>{g.boxmark || '—'}</span>
                                 <span style={{ padding: '6px 10px', fontSize: 11.5, fontWeight: 600, color: 'var(--text-2)', fontFamily: 'var(--mono)' }}>{g.box_type || '—'}</span>
-                                <span style={{ padding: '8px 12px', fontSize: 11.5, color: 'var(--text-3)', fontFamily: 'var(--mono)', marginLeft: 'auto' }}>{boxStems.toLocaleString('de-DE')} stems</span>
+                                <span style={{ padding: '8px 12px', fontSize: 11.5, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>{boxStems.toLocaleString('de-DE')} stems</span>
                               </div>
                             </td>
                           </tr>
