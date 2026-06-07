@@ -131,11 +131,11 @@ function ProductCombobox({ value, products, onChange, inputRef }) {
   )
 }
 
-function newRow(farmId, boxNr, sortOrder) {
+function newRow(growerId, boxNr, sortOrder) {
   return {
     _id: `new_${Date.now()}_${Math.random()}`,
     isNew: true,
-    farm_id: farmId,
+    grower_id: growerId,
     box_nr: boxNr,
     boxmark: '',
     box_type: 'HB',
@@ -151,22 +151,22 @@ function newRow(farmId, boxNr, sortOrder) {
   }
 }
 
-function newBox(farmId, boxNr) {
+function newBox(growerId, boxNr) {
   return {
     boxNr,
     boxmark: '',
     box_type: 'HB',
-    rows: [newRow(farmId, boxNr, 0)],
+    rows: [newRow(growerId, boxNr, 0)],
   }
 }
 
-function newFarmBlock(farm) {
+function newGrowerBlock(grower) {
   return {
-    farmId: farm.id,
-    farmName: farm.name,
-    farmCode: farm.code,
+    growerId: grower.id,
+    growerName: grower.name,
+    growerCode: grower.code,
     collapsed: false,
-    boxes: [newBox(farm.id, 1)],
+    boxes: [newBox(grower.id, 1)],
   }
 }
 
@@ -205,7 +205,7 @@ const STATE_PILL = {
 function ProductRow({ row, rowIndex, products, showState, locked, onUpdate, onDelete, onKeyDown, inputRef }) {
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging
-  } = useSortable({ id: row._id, data: { type: 'row', farmId: row.farm_id, boxNr: row.box_nr }, disabled: locked })
+  } = useSortable({ id: row._id, data: { type: 'row', growerId: row.grower_id, boxNr: row.box_nr }, disabled: locked })
 
   const style = { transform: DndCSS.Transform.toString(transform), transition }
   const product = products.find(p => p.id === row.product_id)
@@ -308,18 +308,18 @@ function ProductRow({ row, rowIndex, products, showState, locked, onUpdate, onDe
   )
 }
 
-// ── Droppable farm block ─────────────────────────────────────────────────────
-function FarmBlock({ block, blockIndex, farms, products, showState, locked, onUpdate, onDelete, onAddFarm }) {
+// ── Droppable grower block ─────────────────────────────────────────────────────
+function GrowerBlock({ block, blockIndex, growers, products, showState, locked, onUpdate, onDelete, onAddGrower }) {
   const [growerProducts, setGrowerProducts] = useState(null) // null = loading, [] = none set
 
   // Load this grower's product catalogue
   useEffect(() => {
-    if (!block.farmId || block.farmId === 'open') { setGrowerProducts(null); return }
+    if (!block.growerId || block.growerId === 'open') { setGrowerProducts(null); return }
     const load = async () => {
       const { data } = await supabase
         .from('grower_products')
         .select('product_id')
-        .eq('company_id', block.farmId)
+        .eq('company_id', block.growerId)
       if (data && data.length > 0) {
         const ids = new Set(data.map(gp => gp.product_id))
         setGrowerProducts(products.filter(p => ids.has(p.id)))
@@ -328,13 +328,13 @@ function FarmBlock({ block, blockIndex, farms, products, showState, locked, onUp
       }
     }
     load()
-  }, [block.farmId])
+  }, [block.growerId])
 
   // Per-grower product catalogue filter is deferred (see W3 backlog).
   // For now, every grower can be assigned any product. We still fetch
   // growerProducts to show the "N varieties" hint on the header.
   const availableProducts = products
-  const { setNodeRef, isOver } = useDroppable({ id: `farm_${block.farmId}`, data: { type: 'farm', farmId: block.farmId } })
+  const { setNodeRef, isOver } = useDroppable({ id: `grower_${block.growerId}`, data: { type: 'grower', growerId: block.growerId } })
   const inputRefs = useRef({})
 
   const totalStems = block.boxes.reduce((a, b) => a + b.rows.reduce((c, r) => c + (Number(r.stems_ordered) || 0), 0), 0)
@@ -359,7 +359,7 @@ function FarmBlock({ block, blockIndex, farms, products, showState, locked, onUp
     const boxes = block.boxes.map((b, i) => {
       if (i !== boxIdx) return b
       const rows = b.rows.filter(r => r._id !== rowId)
-      return { ...b, rows: rows.length ? rows : [newRow(block.farmId, b.boxNr, 0)] }
+      return { ...b, rows: rows.length ? rows : [newRow(block.growerId, b.boxNr, 0)] }
     }).filter(Boolean)
     onUpdate({ ...block, boxes })
   }
@@ -367,7 +367,7 @@ function FarmBlock({ block, blockIndex, farms, products, showState, locked, onUp
   const addRow = (boxIdx) => {
     const box = block.boxes[boxIdx]
     const sortOrder = box.rows.length
-    const row = newRow(block.farmId, box.boxNr, sortOrder)
+    const row = newRow(block.growerId, box.boxNr, sortOrder)
     const boxes = block.boxes.map((b, i) => i === boxIdx ? { ...b, rows: [...b.rows, row] } : b)
     onUpdate({ ...block, boxes })
     // Focus first cell of new row after render
@@ -379,7 +379,7 @@ function FarmBlock({ block, blockIndex, farms, products, showState, locked, onUp
 
   const addBox = () => {
     const nextNr = Math.max(...block.boxes.map(b => b.boxNr), 0) + 1
-    onUpdate({ ...block, boxes: [...block.boxes, newBox(block.farmId, nextNr)] })
+    onUpdate({ ...block, boxes: [...block.boxes, newBox(block.growerId, nextNr)] })
   }
 
   const deleteBox = (boxIdx) => {
@@ -390,9 +390,9 @@ function FarmBlock({ block, blockIndex, farms, products, showState, locked, onUp
   }
 
   const deleteGrower = () => {
-    const name = block.farmName || 'this grower'
+    const name = block.growerName || 'this grower'
     if (window.confirm(`Remove ${name} and all their boxes from this shipment? This cannot be undone.`)) {
-      onDelete(block.farmId)
+      onDelete(block.growerId)
     }
   }
 
@@ -411,25 +411,25 @@ function FarmBlock({ block, blockIndex, farms, products, showState, locked, onUp
   const rowIds = block.boxes.flatMap(b => b.rows.map(r => r._id))
 
   return (
-    <div ref={setNodeRef} className={`farm-block${isOver ? ' dragging-over' : ''}`}>
-      <div className="farm-header" onClick={() => onUpdate({ ...block, collapsed: !block.collapsed })}>
+    <div ref={setNodeRef} className={`grower-block${isOver ? ' dragging-over' : ''}`}>
+      <div className="grower-header" onClick={() => onUpdate({ ...block, collapsed: !block.collapsed })}>
         <i className="ti ti-grip-vertical drag-handle" aria-hidden="true" style={{ color: 'rgba(255,255,255,0.25)', fontSize: 16 }} />
-        <span className="farm-header-name">{block.farmName}</span>
+        <span className="grower-header-name">{block.growerName}</span>
         {growerProducts && growerProducts.length > 0 && (
           <span style={{ fontSize: 10, background: 'rgba(201,169,110,0.25)', color: '#C9A96E', padding: '2px 7px', borderRadius: 10, fontWeight: 600 }}>
             {growerProducts.length} varieties
           </span>
         )}
-        <div className="farm-header-stats">
+        <div className="grower-header-stats">
           <span>{formatInt(totalStems)} stems</span>
           <span>{formatEur(totalCost, 2, '$')}</span>
           <span>{confirmedRows}/{totalRows} confirmed</span>
         </div>
-        <button className="farm-collapse-btn" onClick={e => { e.stopPropagation(); onUpdate({ ...block, collapsed: !block.collapsed }) }} title={block.collapsed ? 'Expand' : 'Collapse'}>
+        <button className="grower-collapse-btn" onClick={e => { e.stopPropagation(); onUpdate({ ...block, collapsed: !block.collapsed }) }} title={block.collapsed ? 'Expand' : 'Collapse'}>
           <i className={`ti ti-chevron-${block.collapsed ? 'right' : 'down'}`} aria-hidden="true" style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)' }} />
         </button>
         {!locked && (
-          <button className="farm-collapse-btn" onClick={e => { e.stopPropagation(); deleteGrower() }} title="Remove grower from shipment">
+          <button className="grower-collapse-btn" onClick={e => { e.stopPropagation(); deleteGrower() }} title="Remove grower from shipment">
             <i className="ti ti-trash" aria-hidden="true" style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }} />
           </button>
         )}
@@ -437,7 +437,7 @@ function FarmBlock({ block, blockIndex, farms, products, showState, locked, onUp
 
       {!block.collapsed && (
         <>
-          {/* Column headers — shown once per farm */}
+          {/* Column headers — shown once per grower */}
           <div style={{ display: 'flex', alignItems: 'center', background: 'var(--surface-2)', borderBottom: '0.5px solid var(--border)', fontSize: 10, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
             <span style={{ width: 34 }} />
             <span style={{ width: 28 }}>#</span>
@@ -455,7 +455,7 @@ function FarmBlock({ block, blockIndex, farms, products, showState, locked, onUp
 
           <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
             {block.boxes.map((box, boxIdx) => (
-              <div key={`box_${block.farmId}_${box.boxNr}`} className="box-block">
+              <div key={`box_${block.growerId}_${box.boxNr}`} className="box-block">
                 <div className="box-header">
                   <span className="box-drag-handle"><i className="ti ti-grip-horizontal" aria-hidden="true" /></span>
                   <span className="box-number">Box {box.boxNr}</span>
@@ -521,7 +521,7 @@ function FarmBlock({ block, blockIndex, farms, products, showState, locked, onUp
 }
 
 // ── Main PO Editor ───────────────────────────────────────────────────────────
-export default function POEditor({ shipmentId, companyId, status, farms, products, onStartPurchasing, onClosePurchasing, onReopenPurchasing }) {
+export default function POEditor({ shipmentId, companyId, status, growers, products, onStartPurchasing, onClosePurchasing, onReopenPurchasing }) {
   // The PO list is editable only in Draft and Active. After Close purchasing
   // (status = in_transit) and beyond, the list is locked. Buyer must Reopen
   // purchasing to make changes.
@@ -530,7 +530,7 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [showAddFarm, setShowAddFarm] = useState(false)
+  const [showAddGrower, setShowAddGrower] = useState(false)
   const [activeId, setActiveId] = useState(null)
   const [showSaveTpl, setShowSaveTpl] = useState(false)
   const [showLoadTpl, setShowLoadTpl] = useState(false)
@@ -550,20 +550,20 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
 
       if (!data || data.length === 0) { setBlocks([]); setLoading(false); return }
 
-      // Group by farm then box_nr
-      const farmMap = {}
+      // Group by grower then box_nr
+      const growerMap = {}
       data.forEach(po => {
         const fid = po.grower_company_id || 'open'
-        const grower = farms.find(f => f.id === fid)
+        const grower = growers.find(f => f.id === fid)
         const fname = grower?.name || '— Open market'
         const fcode = grower?.code || ''
-        if (!farmMap[fid]) farmMap[fid] = { farmId: fid, farmName: fname, farmCode: fcode, collapsed: false, boxes: {} }
+        if (!growerMap[fid]) growerMap[fid] = { growerId: fid, growerName: fname, growerCode: fcode, collapsed: false, boxes: {} }
         const bn = po.box_nr || 1
-        if (!farmMap[fid].boxes[bn]) farmMap[fid].boxes[bn] = { boxNr: bn, boxmark: po.boxmark || '', box_type: po.box_type || 'HB', rows: [] }
-        farmMap[fid].boxes[bn].rows.push({
+        if (!growerMap[fid].boxes[bn]) growerMap[fid].boxes[bn] = { boxNr: bn, boxmark: po.boxmark || '', box_type: po.box_type || 'HB', rows: [] }
+        growerMap[fid].boxes[bn].rows.push({
           _id: po.id,
           isNew: false,
-          farm_id: po.grower_company_id,
+          grower_id: po.grower_company_id,
           box_nr: po.box_nr,
           boxmark: po.boxmark,
           box_type: po.box_type,
@@ -580,13 +580,13 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
         })
       })
 
-      const blockArr = Object.values(farmMap).map(f => ({
+      const blockArr = Object.values(growerMap).map(f => ({
         ...f,
         boxes: Object.values(f.boxes)
       }))
       setBlocks(blockArr)
       setLoading(false)
-  }, [shipmentId, farms])
+  }, [shipmentId, growers])
 
   useEffect(() => { loadPOs() }, [loadPOs])
 
@@ -622,18 +622,18 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
     autoSave(nb)
   }
 
-  const deleteBlock = (farmId) => {
-    const nb = blocks.filter(b => b.farmId !== farmId)
+  const deleteBlock = (growerId) => {
+    const nb = blocks.filter(b => b.growerId !== growerId)
     setBlocks(nb)
     autoSave(nb)
   }
 
-  const addFarm = (farm) => {
-    const exists = blocks.find(b => b.farmId === farm.id)
-    if (exists) { setShowAddFarm(false); return }
-    const nb = [...blocks, newFarmBlock(farm)]
+  const addFarm = (grower) => {
+    const exists = blocks.find(b => b.growerId === grower.id)
+    if (exists) { setShowAddGrower(false); return }
+    const nb = [...blocks, newGrowerBlock(grower)]
     setBlocks(nb)
-    setShowAddFarm(false)
+    setShowAddGrower(false)
     autoSave(nb)
   }
 
@@ -652,7 +652,7 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
             dbId: row.isNew ? null : row._id,
             payload: {
               shipment_id: shipmentId,
-              grower_company_id: block.farmId === 'open' ? null : block.farmId,
+              grower_company_id: block.growerId === 'open' ? null : block.growerId,
               product_id: row.product_id || null,
               order_type: row.order_type,
               status: row.status,
@@ -786,7 +786,7 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
             </button>
           )}
           {(status === 'draft' || status === 'active') && (
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowAddFarm(true)}>
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowAddGrower(true)}>
               <i className="ti ti-building-factory" aria-hidden="true" /> Add grower
             </button>
           )}
@@ -811,7 +811,7 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
             <div className="empty-title">Purchase Order List is empty</div>
             <div className="empty-sub">Add a grower to start building the order list for this shipment</div>
             {(status === 'draft' || status === 'active') && (
-              <button className="btn btn-brown" style={{ marginTop: 12 }} onClick={() => setShowAddFarm(true)}>
+              <button className="btn btn-brown" style={{ marginTop: 12 }} onClick={() => setShowAddGrower(true)}>
                 <i className="ti ti-building-factory" aria-hidden="true" /> Add first grower
               </button>
             )}
@@ -819,20 +819,20 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
         ) : (
           <>
             {blocks.map((block, idx) => (
-              <FarmBlock
-                key={block.farmId}
+              <GrowerBlock
+                key={block.growerId}
                 block={block}
                 blockIndex={idx}
-                farms={farms}
+                growers={growers}
                 products={products}
                 showState={status !== 'draft'}
                 locked={locked}
                 onUpdate={updated => updateBlock(idx, updated)}
-                onDelete={farmId => deleteBlock(farmId)}
+                onDelete={growerId => deleteBlock(growerId)}
               />
             ))}
             {(status === 'draft' || status === 'active') && (
-              <button className="add-farm-btn" onClick={() => setShowAddFarm(true)}>
+              <button className="add-grower-btn" onClick={() => setShowAddGrower(true)}>
                 <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: 15 }} /> Add another grower
               </button>
             )}
@@ -852,30 +852,30 @@ export default function POEditor({ shipmentId, companyId, status, farms, product
         </div>
       )}
 
-      {/* Add Farm Modal */}
-      {showAddFarm && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAddFarm(false)}>
+      {/* Add Grower Modal */}
+      {showAddGrower && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAddGrower(false)}>
           <div className="modal" style={{ maxWidth: 480 }}>
             <div className="modal-header">
               <i className="ti ti-building-factory" style={{ fontSize: 17, color: 'var(--green)' }} aria-hidden="true" />
               <div className="modal-title">Add grower to this shipment</div>
-              <button className="btn-icon" onClick={() => setShowAddFarm(false)}><i className="ti ti-x" /></button>
+              <button className="btn-icon" onClick={() => setShowAddGrower(false)}><i className="ti ti-x" /></button>
             </div>
             <div className="modal-body" style={{ gap: 6, maxHeight: 400, overflowY: 'auto' }}>
-              {farms.filter(f => !blocks.find(b => b.farmId === f.id)).map(farm => (
-                <div key={farm.id}
-                  onClick={() => addFarm(farm)}
+              {growers.filter(f => !blocks.find(b => b.growerId === f.id)).map(grower => (
+                <div key={grower.id}
+                  onClick={() => addFarm(grower)}
                   style={{ padding: '11px 14px', border: '0.5px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.1s' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--green-pale)'}
                   onMouseLeave={e => e.currentTarget.style.background = ''}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>{farm.name}</div>
-                    {farm.code && <div style={{ fontSize: 11.5, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>{farm.code}</div>}
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{grower.name}</div>
+                    {grower.code && <div style={{ fontSize: 11.5, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>{grower.code}</div>}
                   </div>
-                  <span style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{farm.country}</span>
+                  <span style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{grower.country}</span>
                 </div>
               ))}
-              {farms.filter(f => !blocks.find(b => b.farmId === f.id)).length === 0 && (
+              {growers.filter(f => !blocks.find(b => b.growerId === f.id)).length === 0 && (
                 <div className="empty" style={{ padding: 24 }}>
                   <div className="empty-sub">All growers already added to this shipment</div>
                 </div>

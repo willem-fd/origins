@@ -563,7 +563,7 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
               shipmentId={s.id}
               companyId={companyId}
               status={s.status}
-              farms={growers}
+              growers={growers}
               products={products}
               onStartPurchasing={s.status === 'draft' ? () => updateStatus('active') : null}
               onClosePurchasing={s.status === 'active' ? () => setConfirmClose(true) : null}
@@ -1209,7 +1209,7 @@ export default function App() {
             {page === 'products' && <ProductsPage products={products} />}
             {page === 'templates' && <TemplatesPage companyId={effectiveProfile?.company_id || null} adminAll={realIsSuper && !viewAs} />}
             {page === 'invitations' && <InvitationsPage realProfile={profile} viewAs={viewAs} />}
-            {page === 'statements' && <ComingSoon icon="file-invoice" title="Account Statements" sub="Monthly farm payment reconciliation — coming next" />}
+            {page === 'statements' && <ComingSoon icon="file-invoice" title="Account Statements" sub="Monthly grower payment reconciliation — coming next" />}
             {page === 'claims' && <ComingSoon icon="alert-triangle" title="Claims & Credit Notes" sub="Quality claims management — coming next" />}
             </>
             ))}

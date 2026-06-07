@@ -449,13 +449,13 @@ export const CSS = `
   /* PO EDITOR */
   .po-editor { display: flex; flex-direction: column; border: 0.5px solid var(--border); border-radius: var(--radius); background: var(--surface); }
   .po-editor-toolbar { display: flex; align-items: center; padding: 12px 16px; border-bottom: 0.5px solid var(--border); gap: 10px; background: var(--surface); }
-  .farm-block { border-bottom: 0.5px solid var(--border); }
-  .farm-block:last-child { border-bottom: none; }
-  .farm-header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--green-deep); cursor: pointer; user-select: none; }
-  .farm-header-name { font-size: 13px; font-weight: 500; color: #E8DDD0; flex: 1; }
-  .farm-header-stats { font-size: 11.5px; color: rgba(255,255,255,0.35); font-family: var(--mono); display: flex; gap: 14px; }
-  .farm-collapse-btn { background: transparent; border: none; padding: 4px 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; transition: background 0.15s ease; }
-  .farm-collapse-btn:hover { background: rgba(255,255,255,0.08); }
+  .grower-block { border-bottom: 0.5px solid var(--border); }
+  .grower-block:last-child { border-bottom: none; }
+  .grower-header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--green-deep); cursor: pointer; user-select: none; }
+  .grower-header-name { font-size: 13px; font-weight: 500; color: #E8DDD0; flex: 1; }
+  .grower-header-stats { font-size: 11.5px; color: rgba(255,255,255,0.35); font-family: var(--mono); display: flex; gap: 14px; }
+  .grower-collapse-btn { background: transparent; border: none; padding: 4px 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; transition: background 0.15s ease; }
+  .grower-collapse-btn:hover { background: rgba(255,255,255,0.08); }
   .box-block { border-bottom: 0.5px solid var(--border); }
   .box-block:last-child { border-bottom: none; }
   .box-header { display: flex; align-items: center; background: var(--surface-2); border-bottom: 0.5px solid var(--border); font-size: 12px; }
@@ -499,8 +499,8 @@ export const CSS = `
   .add-row-btn:hover { color: var(--brown); background: var(--brown-pale); }
   .add-box-btn { display: flex; align-items: center; gap: 7px; padding: 8px 16px 8px 36px; font-size: 12px; color: var(--text-3); cursor: pointer; border: none; background: none; width: 100%; text-align: left; transition: all 0.12s; border-top: 0.5px dashed var(--border); }
   .add-box-btn:hover { color: var(--green); background: var(--green-pale); }
-  .add-farm-btn { display: flex; align-items: center; gap: 8px; padding: 12px 16px; font-size: 13px; color: var(--text-3); cursor: pointer; border: none; background: none; width: 100%; text-align: left; transition: all 0.12s; border-top: 0.5px dashed var(--border); }
-  .add-farm-btn:hover { color: var(--green); background: var(--green-pale); }
+  .add-grower-btn { display: flex; align-items: center; gap: 8px; padding: 12px 16px; font-size: 13px; color: var(--text-3); cursor: pointer; border: none; background: none; width: 100%; text-align: left; transition: all 0.12s; border-top: 0.5px dashed var(--border); }
+  .add-grower-btn:hover { color: var(--green); background: var(--green-pale); }
   .order-type-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.04em; flex-shrink: 0; }
   .ot-so { background: var(--brown-pale); color: var(--brown-dark); }
   .ot-ro { background: var(--green-light); color: var(--green-dark); }

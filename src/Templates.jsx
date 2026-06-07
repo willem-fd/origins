@@ -9,7 +9,7 @@ export function blocksToTemplateItems(blocks) {
     block.boxes.forEach(box => {
       box.rows.forEach((row, i) => {
         items.push({
-          grower_company_id: block.farmId === 'open' ? null : block.farmId,
+          grower_company_id: block.growerId === 'open' ? null : block.growerId,
           box_nr:          box.boxNr,
           boxmark:         box.boxmark || null,
           box_type:        box.box_type,
