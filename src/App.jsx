@@ -8,6 +8,7 @@ import TemplatesPage from './Templates'
 import InvitationsPage, { AcceptInvitation, ConnectionRequestsPage } from './Invitations'
 import MyProfile from './MyProfile'
 import TeamPage from './TeamPage'
+import GrowerOrdersPage from './GrowerOrders'
 import CountryCombobox from './CountryCombobox'
 import Auth from './Auth'
 import { COUNTRIES, SHIP_STATUSES, STATUS_LABELS, STATUS_BADGE, flag, fmt, validateEmail, validatePhone } from './constants'
@@ -1176,8 +1177,9 @@ export default function App() {
             {page === 'connections' && <ConnectionRequestsPage companyId={effectiveProfile?.company_id || null} onRespond={refreshPendingConnections} />}
             {page === 'settings'    && <CompanySettingsPage companyId={effectiveProfile?.company_id || null} />}
             {page === 'users'       && <TeamPage companyId={effectiveProfile?.company_id || null} profile={effectiveProfile} />}
+            {accountType === 'grower' && page === 'shipments' && <GrowerOrdersPage companyId={effectiveProfile?.company_id || null} profile={effectiveProfile} />}
 
-            {!['connections', 'settings', 'users'].includes(page) && (isPortal ? (
+            {!['connections', 'settings', 'users'].includes(page) && !(accountType === 'grower' && page === 'shipments') && (isPortal ? (
               <ComingSoon {...(PORTAL[accountType].page[page] || PORTAL[accountType].page.dashboard)} />
             ) : (
             <>
