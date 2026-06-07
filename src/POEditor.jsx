@@ -330,10 +330,8 @@ function GrowerBlock({ block, blockIndex, growers, products, showState, locked, 
     load()
   }, [block.growerId])
 
-  // Per-grower product catalogue filter is deferred (see W3 backlog).
-  // For now, every grower can be assigned any product. We still fetch
-  // growerProducts to show the "N varieties" hint on the header.
-  const availableProducts = products
+  // Use grower's catalogue if it has products, otherwise fall back to full catalogue
+  const availableProducts = growerProducts && growerProducts.length > 0 ? growerProducts : products
   const { setNodeRef, isOver } = useDroppable({ id: `grower_${block.growerId}`, data: { type: 'grower', growerId: block.growerId } })
   const inputRefs = useRef({})
 

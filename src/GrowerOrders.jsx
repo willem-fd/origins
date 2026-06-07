@@ -292,12 +292,14 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
                       const boxStems = g.rows.reduce((a, r) => a + (Number(r.stems_ordered) || 0), 0)
                       return (
                         <tbody key={`box-${g.box_nr}-${gi}`}>
-                          <tr style={{ background: 'var(--green-deep)', color: '#E8DDD0' }}>
-                            <td colSpan={10} style={{ padding: '8px 14px', fontSize: 12 }}>
-                              <span style={{ fontWeight: 600, fontFamily: 'var(--mono)' }}>Box {g.box_nr ?? '—'}</span>
-                              <span style={{ marginLeft: 14, fontFamily: 'var(--mono)', textTransform: 'uppercase', color: '#C9A96E' }}>{g.boxmark || '—'}</span>
-                              <span style={{ marginLeft: 14, padding: '1px 8px', borderRadius: 4, background: 'rgba(201,169,110,0.18)', fontSize: 11, fontWeight: 600, color: '#C9A96E', letterSpacing: 0.5 }}>{g.box_type || '—'}</span>
-                              <span style={{ marginLeft: 14, fontFamily: 'var(--mono)', color: 'rgba(255,255,255,0.55)' }}>{boxStems.toLocaleString('de-DE')} stems</span>
+                          <tr style={{ background: 'var(--surface-2)', borderBottom: '0.5px solid var(--border)' }}>
+                            <td colSpan={10} style={{ padding: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', fontSize: 12 }}>
+                                <span style={{ padding: '8px 14px', fontSize: 11.5, fontWeight: 600, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>Box {g.box_nr ?? '—'}</span>
+                                <span style={{ padding: '6px 10px', fontSize: 12, fontWeight: 500, color: 'var(--brown-dark)', fontFamily: 'var(--mono)', textTransform: 'uppercase', borderLeft: '0.5px solid var(--border)', borderRight: '0.5px solid var(--border)', minWidth: 90 }}>{g.boxmark || '—'}</span>
+                                <span style={{ padding: '6px 10px', fontSize: 11.5, fontWeight: 600, color: 'var(--text-2)', fontFamily: 'var(--mono)' }}>{g.box_type || '—'}</span>
+                                <span style={{ padding: '8px 12px', fontSize: 11.5, color: 'var(--text-3)', fontFamily: 'var(--mono)', marginLeft: 'auto' }}>{boxStems.toLocaleString('de-DE')} stems</span>
+                              </div>
                             </td>
                           </tr>
                           {g.rows.map((l, ri) => (
