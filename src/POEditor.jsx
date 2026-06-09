@@ -50,6 +50,30 @@ export function formatInt(n) {
   if (n == null || !Number.isFinite(Number(n))) return '—'
   return Number(n).toLocaleString('de-DE', { maximumFractionDigits: 0 })
 }
+// Bunches: show as whole if integer, else 2 decimals (a fractional total
+// signals at least one line's stems_ordered isn't a clean multiple of its
+// stems_per_bunch).
+export function formatBunches(n) {
+  if (n == null || !Number.isFinite(Number(n))) return '—'
+  const num = Number(n)
+  if (Number.isInteger(num)) return num.toLocaleString('de-DE')
+  return num.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+// Normalize a price string on blur:
+//   ""        → ""
+//   "5"       → "5,00"
+//   ",5"      → "0,50"
+//   "0,5"     → "0,50"
+//   "12,3"    → "12,30"
+//   junk      → leave as-is
+export function normalizePrice(val) {
+  if (val == null || val === '') return ''
+  const cleaned = String(val).trim().replace(',', '.')
+  if (cleaned === '' || cleaned === '.') return ''
+  const num = Number(cleaned)
+  if (!Number.isFinite(num)) return val
+  return num.toFixed(2).replace('.', ',')
+}
 
 // ── Product Combobox ──────────────────────────────────────────────────────────
 function ProductCombobox({ value, products, onChange, inputRef }) {
@@ -206,11 +230,11 @@ function StatusDot({ status, onChange }) {
 //   cancelled                       → "Cancelled"
 function computeBadge(row, viewerCompanyId) {
   if (row.state === 'active')    return { label: 'Confirmed', cls: 'badge-active' }
-  if (row.state === 'cancelled') return { label: 'Cancelled', cls: 'badge-completed' }
+  if (row.state === 'cancelled') return { label: 'Cancelled', cls: 'badge-cancelled' }
   // pending
   const replyRequired = row.last_action_by_company && row.last_action_by_company !== viewerCompanyId
   if (replyRequired) return { label: 'Reply required', cls: 'badge-attention' }
-  return { label: 'Awaiting grower', cls: 'badge-awaiting' }
+  return { label: 'Awaiting reply', cls: 'badge-awaiting' }
 }
 function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyId, onOpenHistory, onUpdate, onDelete, onKeyDown, inputRef }) {
   const {
@@ -220,11 +244,13 @@ function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyI
   const style = { transform: DndCSS.Transform.toString(transform), transition }
   const product = products.find(p => p.id === row.product_id)
   const ot = OT_MAP[row.order_type] || OT_MAP.open_market
+  const badge = computeBadge(row, viewerCompanyId)
+  const replyRequired = badge.cls === 'badge-attention'
 
   const set = (k, v) => onUpdate({ ...row, [k]: v })
 
   return (
-    <div ref={setNodeRef} style={style} className={`product-row${isDragging ? ' is-dragging' : ''}`}>
+    <div ref={setNodeRef} style={style} className={`product-row${isDragging ? ' is-dragging' : ''}${replyRequired ? ' reply-required' : ''}`}>
       {locked
         ? <span className="row-drag" style={{ opacity: 0.25, cursor: 'default' }}><i className="ti ti-grip-vertical" aria-hidden="true" /></span>
         : <span className="row-drag" {...attributes} {...listeners}><i className="ti ti-grip-vertical" aria-hidden="true" /></span>}
@@ -261,12 +287,20 @@ function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyI
           onKeyDown={e => onKeyDown(e, row._id, 'length_cm')} readOnly={locked} />
       </div>
 
-      {/* Stems */}
-      <div className="cell" style={{ width: 80 }}>
-        <input className="cell-input mono" type="number" placeholder="—" value={row.stems_ordered}
-          onChange={e => set('stems_ordered', e.target.value)}
-          onKeyDown={e => onKeyDown(e, row._id, 'stems_ordered')} readOnly={locked} />
-      </div>
+      {/* Stems — visual warning when not a clean multiple of stems_per_bunch */}
+      {(() => {
+        const s = Number(row.stems_ordered) || 0
+        const pb = Number(row.stems_per_bunch) || 0
+        const invalidBunching = s > 0 && pb > 0 && (s % pb !== 0)
+        const bunches = (s > 0 && pb > 0) ? s / pb : null
+        return (
+          <div className="cell" style={{ width: 80 }} title={bunches != null ? `${formatBunches(bunches)} bunches at ${pb} stems/bunch${invalidBunching ? ' — not a whole number of bunches' : ''}` : ''}>
+            <input className={`cell-input mono${invalidBunching ? ' invalid' : ''}`} type="number" placeholder="—" value={row.stems_ordered}
+              onChange={e => set('stems_ordered', e.target.value)}
+              onKeyDown={e => onKeyDown(e, row._id, 'stems_ordered')} readOnly={locked} />
+          </div>
+        )
+      })()}
 
       {/* St/Bunch */}
       <div className="cell" style={{ width: 70 }}>
@@ -275,10 +309,11 @@ function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyI
           onKeyDown={e => onKeyDown(e, row._id, 'stems_per_bunch')} readOnly={locked} />
       </div>
 
-      {/* Price */}
+      {/* Price — auto-normalize on blur to "X,XX" */}
       <div className="cell" style={{ width: 82 }}>
         <input className="cell-input mono" type="text" inputMode="decimal" placeholder="0,00" value={row.price_ordered}
           onChange={e => set('price_ordered', e.target.value.replace('.', ','))}
+          onBlur={e => { const n = normalizePrice(e.target.value); if (n !== row.price_ordered) set('price_ordered', n) }}
           onKeyDown={e => onKeyDown(e, row._id, 'price_ordered')} readOnly={locked} />
       </div>
 
@@ -300,14 +335,11 @@ function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyI
 
       {/* State (W3 lifecycle: pending / confirmed / cancelled) + history icon */}
       <div className="cell" style={{ width: 130, justifyContent: 'center', gap: 6 }}>
-        {showState && row.state ? (() => {
-          const b = computeBadge(row, viewerCompanyId)
-          return (
-            <span className={`badge ${b.cls}`} style={{ minWidth: 98, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
-              {b.label}
-            </span>
-          )
-        })() : (
+        {showState && row.state ? (
+          <span className={`badge ${badge.cls}`} style={{ minWidth: 98, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
+            {badge.label}
+          </span>
+        ) : (
           <span style={{ color: 'var(--text-3)', fontSize: 11 }}>—</span>
         )}
         {!row.isNew && onOpenHistory && (
@@ -359,6 +391,11 @@ function GrowerBlock({ block, blockIndex, growers, products, showState, locked, 
   const inputRefs = useRef({})
 
   const totalStems = block.boxes.reduce((a, b) => a + b.rows.reduce((c, r) => c + (Number(r.stems_ordered) || 0), 0), 0)
+  const totalBunches = block.boxes.reduce((a, b) => a + b.rows.reduce((c, r) => {
+    const s = Number(r.stems_ordered) || 0
+    const pb = Number(r.stems_per_bunch) || 0
+    return pb > 0 ? c + (s / pb) : c
+  }, 0), 0)
   const totalCost = block.boxes.reduce((a, b) => a + b.rows.reduce((c, r) => c + ((Number(r.stems_ordered) || 0) * (parseEur(r.price_ordered) || 0)), 0), 0)
   const confirmedRows = block.boxes.reduce((a, b) => a + b.rows.filter(r => r.status === 'confirmed').length, 0)
   const totalRows = block.boxes.reduce((a, b) => a + b.rows.length, 0)
@@ -443,6 +480,7 @@ function GrowerBlock({ block, blockIndex, growers, products, showState, locked, 
         )}
         <div className="grower-header-stats">
           <span>{formatInt(totalStems)} stems</span>
+          <span>{formatBunches(totalBunches)} bunches</span>
           <span>{formatEur(totalCost, 2, '$')}</span>
           <span>{confirmedRows}/{totalRows} confirmed</span>
         </div>
@@ -495,7 +533,15 @@ function GrowerBlock({ block, blockIndex, growers, products, showState, locked, 
                     readOnly={locked}
                   />
                   <span className="box-stems">
-                    {formatInt(box.rows.reduce((a, r) => a + (Number(r.stems_ordered) || 0), 0))} stems
+                    {(() => {
+                      const bs = box.rows.reduce((a, r) => a + (Number(r.stems_ordered) || 0), 0)
+                      const bb = box.rows.reduce((a, r) => {
+                        const s = Number(r.stems_ordered) || 0
+                        const pb = Number(r.stems_per_bunch) || 0
+                        return pb > 0 ? a + (s / pb) : a
+                      }, 0)
+                      return <>{formatInt(bs)} stems · {formatBunches(bb)} bunches</>
+                    })()}
                   </span>
                   {!locked && (
                     <button className="box-delete-btn" onClick={() => deleteBox(boxIdx)} title="Remove box">

@@ -4,16 +4,18 @@ import { flag, STATUS_LABELS, STATUS_BADGE } from './constants'
 import LineDrawer from './LineDrawer'
 
 // Badge label + style for the grower's view.
-//   pending, grower (= viewer) was last actor → "Awaiting buyer"   (gray)
-//   pending, buyer was last actor             → "Reply required"    (orange)
+//   pending, grower (= viewer) was last actor → "Awaiting reply"  (gray)
+//   pending, anyone else (or NULL) was last actor → "Reply required" (orange)
 //   active                                    → "Confirmed"
 //   cancelled                                 → "Cancelled"
 function computeBadge(line, viewerCompanyId) {
   if (line.state === 'active')    return { label: 'Confirmed', cls: 'badge-active' }
-  if (line.state === 'cancelled') return { label: 'Cancelled', cls: 'badge-completed' }
-  const replyRequired = line.last_action_by_company && line.last_action_by_company !== viewerCompanyId
+  if (line.state === 'cancelled') return { label: 'Cancelled', cls: 'badge-cancelled' }
+  // Treat NULL as "reply required" from grower side — typically means buyer
+  // created the line and no ask was recorded yet (e.g. legacy data).
+  const replyRequired = !line.last_action_by_company || line.last_action_by_company !== viewerCompanyId
   if (replyRequired) return { label: 'Reply required', cls: 'badge-attention' }
-  return { label: 'Awaiting buyer', cls: 'badge-awaiting' }
+  return { label: 'Awaiting reply', cls: 'badge-awaiting' }
 }
 const ORDER_TYPE_SHORT = { open_market: 'OM', standing: 'SO', repeating: 'RO' }
 const ORDER_TYPE_LABEL = { open_market: 'Open market', standing: 'Standing order', repeating: 'Repeating order' }
@@ -157,6 +159,7 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
   const [busy, setBusy] = useState(null)
   const [err, setErr] = useState('')
   const [openHistoryFor, setOpenHistoryFor] = useState(null)
+  const [counterInitFor, setCounterInitFor] = useState(null)  // when set, drawer opens with counter form ready
   const isAdmin = !!profile?.is_super_admin || profile?.role === 'admin'
 
   const refresh = async () => {
@@ -283,6 +286,18 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
 
         {tab === 'orders' && (
           <div style={{ padding: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>
+                Order Lines
+                <span style={{ marginLeft: 10, fontSize: 12, fontWeight: 400, color: 'var(--text-3)' }}>
+                  {lines.length} {lines.length === 1 ? 'line' : 'lines'}
+                </span>
+              </div>
+              <div style={{ flex: 1 }} />
+              <button className="btn btn-ghost btn-sm" onClick={refresh} title="Refresh">
+                <i className="ti ti-refresh" aria-hidden="true" /> Refresh
+              </button>
+            </div>
             {lines.length === 0 ? (
               <div className="empty"><i className="ti ti-plant" /><div className="empty-title">No lines for you on this shipment</div></div>
             ) : (
@@ -311,6 +326,14 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
                     }
                     return groups.map((g, gi) => {
                       const boxStems = g.rows.reduce((a, r) => a + (Number(r.stems_ordered) || 0), 0)
+                      const boxBunches = g.rows.reduce((a, r) => {
+                        const s = Number(r.stems_ordered) || 0
+                        const pb = Number(r.stems_per_bunch) || 0
+                        return pb > 0 ? a + (s / pb) : a
+                      }, 0)
+                      const bunchesLabel = Number.isInteger(boxBunches)
+                        ? boxBunches.toLocaleString('de-DE')
+                        : boxBunches.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                       return (
                         <tbody key={`box-${g.box_nr}-${gi}`}>
                           <tr style={{ background: 'var(--surface-2)', borderBottom: '0.5px solid var(--border)' }}>
@@ -319,12 +342,15 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
                                 <span style={{ padding: '8px 14px', fontSize: 11.5, fontWeight: 600, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>Box {g.box_nr ?? '—'}</span>
                                 <span style={{ padding: '6px 10px', fontSize: 12, fontWeight: 500, color: 'var(--brown-dark)', fontFamily: 'var(--mono)', textTransform: 'uppercase', borderLeft: '0.5px solid var(--border)', borderRight: '0.5px solid var(--border)', minWidth: 90 }}>{g.boxmark || '—'}</span>
                                 <span style={{ padding: '6px 10px', fontSize: 11.5, fontWeight: 600, color: 'var(--text-2)', fontFamily: 'var(--mono)' }}>{g.box_type || '—'}</span>
-                                <span style={{ padding: '8px 12px', fontSize: 11.5, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>{boxStems.toLocaleString('de-DE')} stems</span>
+                                <span style={{ padding: '8px 12px', fontSize: 11.5, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>{boxStems.toLocaleString('de-DE')} stems · {bunchesLabel} bunches</span>
                               </div>
                             </td>
                           </tr>
-                          {g.rows.map((l, ri) => (
-                            <tr key={l.id}>
+                          {g.rows.map((l, ri) => {
+                            const badge = computeBadge(l, companyId)
+                            const replyRequired = badge.cls === 'badge-attention'
+                            return (
+                            <tr key={l.id} className={replyRequired ? 'reply-required' : ''}>
                               <td className="td-mono" style={{ color: 'var(--text-3)' }}>{ri + 1}</td>
                               <td className="td-mono" title={ORDER_TYPE_LABEL[l.order_type]}>
                                 <span style={{ fontWeight: 700, fontSize: 11 }}>{ORDER_TYPE_SHORT[l.order_type] || '—'}</span>
@@ -337,15 +363,10 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
                               <td style={{ fontSize: 12.5, color: 'var(--text-2)', maxWidth: 200 }}>{l.notes_buyer || <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
                               <td>
                                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                  {(() => {
-                                    const b = computeBadge(l, companyId)
-                                    return (
-                                      <span className={`badge ${b.cls}`} style={{ minWidth: 98, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
-                                        {b.label}
-                                      </span>
-                                    )
-                                  })()}
-                                  <button className="history-btn" onClick={() => setOpenHistoryFor(l.id)} title="Open line history" aria-label="Open line history">
+                                  <span className={`badge ${badge.cls}`} style={{ minWidth: 98, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
+                                    {badge.label}
+                                  </span>
+                                  <button className="history-btn" onClick={() => { setCounterInitFor(null); setOpenHistoryFor(l.id) }} title="Open line history" aria-label="Open line history">
                                     <i className="ti ti-history" aria-hidden="true" />
                                   </button>
                                 </div>
@@ -355,6 +376,9 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
                                   <>
                                     <button className="btn btn-ghost btn-sm" disabled={busy === l.id} onClick={() => act(l.id, 'po_cancel')}>
                                       <i className="ti ti-x" aria-hidden="true" /> Cancel
+                                    </button>
+                                    <button className="btn btn-ghost btn-sm" disabled={busy === l.id} onClick={() => { setCounterInitFor(l.id); setOpenHistoryFor(l.id) }} title="Open the line history drawer with the counter form ready">
+                                      <i className="ti ti-arrows-exchange" aria-hidden="true" /> Counter
                                     </button>
                                     <button
                                       className="btn btn-primary btn-sm"
@@ -368,7 +392,7 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
                                 )}
                               </td>
                             </tr>
-                          ))}
+                          )})}
                         </tbody>
                       )
                     })
@@ -390,7 +414,12 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
         )}
       </div>
 
-      <LineDrawer poId={openHistoryFor} onClose={() => setOpenHistoryFor(null)} onActionTaken={refresh} />
+      <LineDrawer
+        poId={openHistoryFor}
+        initialCounterMode={counterInitFor === openHistoryFor && openHistoryFor != null}
+        onClose={() => { setOpenHistoryFor(null); setCounterInitFor(null) }}
+        onActionTaken={refresh}
+      />
     </>
   )
 }

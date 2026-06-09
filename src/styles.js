@@ -159,15 +159,16 @@ export const CSS = `
   /* BADGES */
   .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 500; }
   .badge-draft     { background: var(--surface-3); color: var(--text-2); }
-  .badge-active    { background: #EAF2EE; color: #1A6640; }
+  .badge-active    { background: #15803D; color: #FFFFFF; font-weight: 600; }
+  .badge-completed { background: var(--surface-3); color: var(--text-2); }
+  .badge-pending   { background: var(--surface-3); color: var(--text-2); }
+  .badge-cancelled { background: #B91C1C; color: #FFFFFF; font-weight: 600; }
+  .badge-awaiting  { background: var(--surface-3); color: var(--text-3); }
+  .badge-attention { background: #EA580C; color: #FFFFFF; font-weight: 600; }
   .badge-dropped   { background: #FEF3E8; color: #7A4A10; }
   .badge-transit   { background: #EAF0FA; color: #1E4080; }
   .badge-departed  { background: #F0E8FA; color: #5B21B6; }
   .badge-arrived   { background: #EAF2EE; color: #1A6640; }
-  .badge-completed { background: var(--surface-3); color: var(--text-2); }
-  .badge-pending   { background: var(--surface-3); color: var(--text-2); }
-  .badge-awaiting  { background: var(--surface-3); color: var(--text-2); }
-  .badge-attention { background: #FEF3E2; color: #B45309; }
   .badge-confirmed { background: #EAF2EE; color: #1A6640; }
   .badge-partial   { background: #FEF3E8; color: #7A4A10; }
   .badge-counter   { background: #EAF0FA; color: #1E4080; }
@@ -515,6 +516,11 @@ export const CSS = `
   .filter-chip.active { background: var(--green); color: #fff; border-color: var(--green); }
   .history-btn { background: transparent; border: none; padding: 3px 5px; cursor: pointer; color: var(--text-3); font-size: 13px; border-radius: 4px; display: inline-flex; align-items: center; }
   .history-btn:hover { background: var(--surface-2); color: var(--text-2); }
+
+  /* Row tint when this line needs the viewer's reply (paired with badge-attention) */
+  .product-row.reply-required { background: #FFF7ED; }
+  tbody tr.reply-required > td  { background: #FFF7ED; }
+  .cell-input.invalid { background: #FEF3E2; color: #B45309; }
   .add-product-row:hover { background: var(--green-pale); }
 
   /* ── Line history drawer ─────────────────────────────────────────────── */

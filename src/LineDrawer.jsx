@@ -38,7 +38,7 @@ const fmtDate  = (s) => new Date(s).toLocaleString('en-GB', { day: '2-digit', mo
 // LineDrawer — slides in from the right; shows current values + the
 // immutable thread of asks / counters / confirms / cancels for one line.
 // Hosts the Counter form for grower-side admins on pending lines.
-export default function LineDrawer({ poId, onClose, onActionTaken }) {
+export default function LineDrawer({ poId, initialCounterMode, onClose, onActionTaken }) {
   const [line, setLine] = useState(null)
   const [actions, setActions] = useState([])
   const [companyMap, setCompanyMap] = useState({})
@@ -87,12 +87,23 @@ export default function LineDrawer({ poId, onClose, onActionTaken }) {
       setActions(a)
       setProfile(p)
       setCompanyMap(Object.fromEntries((cs || []).map(c => [c.id, c])))
+
+      // If parent requested the counter form ready on open, populate + show it
+      if (initialCounterMode && l.state === 'pending') {
+        setCounterForm({
+          price: l.price_ordered != null ? String(l.price_ordered).replace('.', ',') : '',
+          stems: l.stems_ordered != null ? String(l.stems_ordered) : '',
+          stpb:  l.stems_per_bunch != null ? String(l.stems_per_bunch) : '',
+        })
+        setCounterMode(true)
+      }
+
       setLoading(false)
     } catch (e) {
       setErr(e.message || 'Failed to load line history')
       setLoading(false)
     }
-  }, [poId])
+  }, [poId, initialCounterMode])
 
   useEffect(() => {
     if (!poId) return
@@ -262,6 +273,13 @@ export default function LineDrawer({ poId, onClose, onActionTaken }) {
                           placeholder="0,00"
                           value={counterForm.price}
                           onChange={e => setCounterForm({ ...counterForm, price: e.target.value.replace('.', ',') })}
+                          onBlur={e => {
+                            const v = e.target.value
+                            if (!v) return
+                            const cleaned = v.trim().replace(',', '.')
+                            const n = Number(cleaned)
+                            if (Number.isFinite(n)) setCounterForm(f => ({ ...f, price: n.toFixed(2).replace('.', ',') }))
+                          }}
                           autoFocus
                         />
                       </label>
