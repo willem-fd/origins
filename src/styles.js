@@ -471,7 +471,7 @@ export const CSS = `
   .box-delete-btn { padding: 8px 12px; background: none; border: none; cursor: pointer; color: var(--text-3); font-size: 15px; margin-left: auto; }
   .box-delete-btn:hover { color: #b91c1c; }
   .product-rows { display: flex; flex-direction: column; }
-  .product-row { display: flex; align-items: center; gap: 0; border-bottom: 0.5px solid var(--border); transition: background 0.1s; position: relative; }
+  .product-row { display: flex; align-items: center; gap: 0; border-bottom: 0.5px solid var(--border); transition: background 0.1s; position: relative; min-height: 34px; }
   .product-row:last-child { border-bottom: none; }
   .product-row:hover { background: var(--green-pale); }
   .row-drag { padding: 0 6px 0 14px; color: var(--text-3); cursor: grab; font-size: 14px; opacity: 0; transition: opacity 0.1s; flex-shrink: 0; }
@@ -533,13 +533,13 @@ export const CSS = `
   @keyframes drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
   @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
-  /* Drawer-active row: brass/gold ring + subtle tint so the chosen line
-     is clearly visible whether or not the cursor is hovering it.
-     Buyer side uses box-shadow on a div; grower side uses outline on the
-     <tr> for a single ring around the whole row (not per-cell). */
-  .product-row.drawer-active { box-shadow: 0 0 0 2px #C9A96E, 0 4px 14px rgba(201,169,110,0.30); position: relative; z-index: 90; border-radius: 6px; background: rgba(201,169,110,0.07); }
-  tbody tr.drawer-active { outline: 2px solid #C9A96E; outline-offset: -2px; position: relative; z-index: 90; }
-  tbody tr.drawer-active > td { background: rgba(201,169,110,0.07); }
+  /* Drawer-active row: brass/gold ring + tint so the chosen line is clearly
+     visible whether or not the cursor is hovering it. Uses an INSET shadow
+     because the parent .card has overflow:hidden — an outside box-shadow
+     would be clipped. Grower side uses outline on the <tr> + tinted tds. */
+  .product-row.drawer-active { box-shadow: inset 0 0 0 2px #C9A96E; background: rgba(201,169,110,0.14); position: relative; z-index: 1; }
+  tbody tr.drawer-active { outline: 2px solid #C9A96E; outline-offset: -2px; position: relative; z-index: 1; }
+  tbody tr.drawer-active > td { background: rgba(201,169,110,0.10); }
   /* Reply-required tint wins over drawer-active tint when both apply */
   .product-row.reply-required.drawer-active { background: #FFF7ED; }
   tbody tr.reply-required.drawer-active > td { background: #FFF7ED; }
