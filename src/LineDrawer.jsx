@@ -136,7 +136,7 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
   const canCancel  = isAdmin && iAmInvolved && (line?.state === 'pending' || line?.state === 'active')
   const canReopen  = isAdmin && iAmInvolved && (line?.state === 'active' || line?.state === 'cancelled')
 
-  const closeOnBackdrop = (e) => { if (e.target === e.currentTarget) onClose() }
+  const closeOnBackdrop = onClose  // backdrop is a separate sibling now; any click closes
   const companyName = (id) => {
     const c = companyMap[id]
     if (!c) return '—'
@@ -224,7 +224,8 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
   }
 
   return (
-    <div className="drawer-backdrop" onClick={closeOnBackdrop}>
+    <>
+      <div className="drawer-backdrop" onClick={onClose} />
       <div className="drawer" role="dialog" aria-label="Line history">
         <div className="drawer-header">
           <div className="drawer-title">Line history</div>
@@ -372,7 +373,7 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
           </>
         ) : null}
       </div>
-    </div>
+    </>
   )
 }
 

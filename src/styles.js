@@ -157,7 +157,7 @@ export const CSS = `
   .td-brown { font-family: var(--mono); font-size: 12px; color: var(--brown-dark); font-weight: 500; }
 
   /* BADGES */
-  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 500; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 500; line-height: 16px; min-height: 22px; box-sizing: border-box; }
   .badge-draft     { background: var(--surface-3); color: var(--text-2); }
   .badge-active    { background: #EAF2EE; color: #1A6640; font-weight: 600; }
   .badge-completed { background: var(--surface-3); color: var(--text-2); }
@@ -524,8 +524,12 @@ export const CSS = `
   .add-product-row:hover { background: var(--green-pale); }
 
   /* ── Line history drawer ─────────────────────────────────────────────── */
-  .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.08); display: flex; justify-content: flex-end; z-index: 80; animation: fade-in 0.18s ease; }
-  .drawer { width: 480px; max-width: 92vw; height: 100vh; background: var(--surface); box-shadow: -4px 0 24px rgba(0,0,0,0.12); overflow-y: auto; animation: drawer-in 0.25s cubic-bezier(0.22, 0.61, 0.36, 1); display: flex; flex-direction: column; }
+  /* Stacking order: backdrop (80) < chosen row (90) < drawer (100).
+     This puts the chosen row visually above the backdrop (so it stays
+     visible) but BELOW the drawer (so the right portion of the row is
+     hidden where the drawer covers it). */
+  .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.18); z-index: 80; animation: fade-in 0.18s ease; }
+  .drawer { position: fixed; top: 0; right: 0; width: 480px; max-width: 92vw; height: 100vh; background: var(--surface); box-shadow: -4px 0 24px rgba(0,0,0,0.12); overflow-y: auto; animation: drawer-in 0.25s cubic-bezier(0.22, 0.61, 0.36, 1); display: flex; flex-direction: column; z-index: 100; }
   @keyframes drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
   @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
