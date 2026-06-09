@@ -174,9 +174,11 @@ function KV({ label, value, children }) {
 
 function ThreadItem({ action, who }) {
   const f = action.fields_json || {}
+  // Always render a values summary for ask / confirm / counter actions, even
+  // if some fields are missing — clearer than hiding them silently. Cancel
+  // actions have no values, so just show the timestamp and actor.
+  const showValues = action.action !== 'cancel'
   const hasPrice = f.price_ordered != null
-  const hasStems = f.stems_ordered != null
-  const hasStB   = f.stems_per_bunch != null
   return (
     <div className="thread-item">
       <div className="thread-item-icon" style={{ color: ACTION_COLOR[action.action] || 'var(--text-2)' }}>
@@ -185,16 +187,16 @@ function ThreadItem({ action, who }) {
       <div className="thread-item-body">
         <div className="thread-item-head">
           <span style={{ fontWeight: 600, color: ACTION_COLOR[action.action] }}>{ACTION_LABEL[action.action] || action.action}</span>
-          <span style={{ color: 'var(--text-3)', fontSize: 11.5 }}>{who}</span>
+          <span style={{ color: 'var(--text-3)', fontSize: 11.5 }}>· {who}</span>
         </div>
-        <div className="thread-item-time">{fmtDate(action.created_at)}</div>
-        {(hasPrice || hasStems || hasStB) && (
+        {showValues && (
           <div className="thread-item-fields">
-            {hasPrice && <span>Price <strong>{fmtPrice(f.price_ordered)}</strong></span>}
-            {hasStems && <span>Stems <strong>{fmtInt(f.stems_ordered)}</strong></span>}
-            {hasStB   && <span>St/B <strong>{fmtInt(f.stems_per_bunch)}</strong></span>}
+            <span>Price <strong style={{ color: hasPrice ? 'var(--text-1)' : 'var(--text-3)' }}>{hasPrice ? fmtPrice(f.price_ordered) : 'not set'}</strong></span>
+            {f.stems_ordered != null && <span>· Stems <strong>{fmtInt(f.stems_ordered)}</strong></span>}
+            {f.stems_per_bunch != null && <span>· St/B <strong>{fmtInt(f.stems_per_bunch)}</strong></span>}
           </div>
         )}
+        <div className="thread-item-time">{fmtDate(action.created_at)}</div>
       </div>
     </div>
   )

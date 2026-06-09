@@ -191,7 +191,16 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
     setBusy(poId); setErr('')
     const { data, error } = await supabase.rpc(fn, { p_po_id: poId })
     setBusy(null)
-    if (error || !data?.ok) { setErr(error?.message || data?.error || 'Action failed'); return }
+    if (error || !data?.ok) {
+      const code = data?.error || error?.message || 'Action failed'
+      const friendly = {
+        price_required:    'Cannot confirm — the buyer left the price open. Counter with a price first.',
+        line_not_pending:  'This line is no longer pending.',
+        shipment_not_active: 'Shipment is not in an active state.',
+        not_authorized:    'You are not authorised to do that.',
+      }[code] || code
+      setErr(friendly); return
+    }
     refresh()
   }
 
@@ -332,7 +341,12 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
                                     <button className="btn btn-ghost btn-sm" disabled={busy === l.id} onClick={() => act(l.id, 'po_cancel')}>
                                       <i className="ti ti-x" aria-hidden="true" /> Cancel
                                     </button>
-                                    <button className="btn btn-primary btn-sm" disabled={busy === l.id} onClick={() => act(l.id, 'po_confirm')}>
+                                    <button
+                                      className="btn btn-primary btn-sm"
+                                      disabled={busy === l.id || l.price_ordered == null}
+                                      title={l.price_ordered == null ? 'Buyer left the price open — counter with a price first' : 'Confirm this line'}
+                                      onClick={() => act(l.id, 'po_confirm')}
+                                    >
                                       <i className="ti ti-check" aria-hidden="true" /> Confirm
                                     </button>
                                   </>
