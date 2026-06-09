@@ -538,9 +538,9 @@ export const CSS = `
      position:relative + z-index lifts it above sibling rows so their
      backgrounds can't paint over the glow. Buyer side uses outside
      box-shadow on the row div; grower side uses outline on the <tr>. */
-  .product-row.drawer-active { box-shadow: 0 0 0 2px #C9A96E, 0 6px 20px rgba(201,169,110,0.45); position: relative; z-index: 5; border-radius: 4px; }
-  tbody tr.drawer-active { outline: 2px solid #C9A96E; outline-offset: -2px; position: relative; z-index: 5; }
-  tbody tr.drawer-active > td { background: rgba(201,169,110,0.10); }
+  .product-row.drawer-active { box-shadow: 0 0 0 2px #C9A96E, 0 6px 20px rgba(201,169,110,0.45); background: var(--surface); position: relative; z-index: 90; border-radius: 4px; }
+  tbody tr.drawer-active { outline: 2px solid #C9A96E; outline-offset: -2px; position: relative; z-index: 90; }
+  tbody tr.drawer-active > td { background: var(--surface); }
   /* Reply-required tint preserved when both apply */
   .product-row.reply-required.drawer-active { background: #FFF7ED; }
   tbody tr.reply-required.drawer-active > td { background: #FFF7ED; }
