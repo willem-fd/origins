@@ -915,7 +915,7 @@ export default function POEditor({ shipmentId, companyId, status, growers, produ
         />
       )}
 
-      <LineDrawer poId={openHistoryFor} onClose={() => setOpenHistoryFor(null)} />
+      <LineDrawer poId={openHistoryFor} onClose={() => setOpenHistoryFor(null)} onActionTaken={loadPOs} />
     </DndContext>
   )
 }

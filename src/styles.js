@@ -537,4 +537,8 @@ export const CSS = `
   .thread-item-time { font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-top: 1px; }
   .thread-item-fields { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-2); font-family: var(--mono); }
   .thread-item-fields strong { color: var(--text-1); font-weight: 600; }
+  .counter-form { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .counter-form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.4px; }
+  .counter-form input { padding: 8px 10px; font-size: 13px; font-family: var(--mono); border: 0.5px solid var(--border-md); border-radius: 6px; background: var(--surface); outline: none; }
+  .counter-form input:focus { border-color: var(--green); }
 `

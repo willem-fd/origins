@@ -375,7 +375,7 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
         )}
       </div>
 
-      <LineDrawer poId={openHistoryFor} onClose={() => setOpenHistoryFor(null)} />
+      <LineDrawer poId={openHistoryFor} onClose={() => setOpenHistoryFor(null)} onActionTaken={refresh} />
     </>
   )
 }
