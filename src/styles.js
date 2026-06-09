@@ -533,14 +533,15 @@ export const CSS = `
   @keyframes drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
   @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
-  /* Drawer-active row: brass/gold ring + tint so the chosen line is clearly
-     visible whether or not the cursor is hovering it. Uses an INSET shadow
-     because the parent .card has overflow:hidden — an outside box-shadow
-     would be clipped. Grower side uses outline on the <tr> + tinted tds. */
-  .product-row.drawer-active { box-shadow: inset 0 0 0 2px #C9A96E; background: rgba(201,169,110,0.14); position: relative; z-index: 1; }
-  tbody tr.drawer-active { outline: 2px solid #C9A96E; outline-offset: -2px; position: relative; z-index: 1; }
+  /* Drawer-active row: brass/gold ring + glow around the chosen line,
+     drawn OUTSIDE the row so it pops forward (not pressed-in / "dropback").
+     position:relative + z-index lifts it above sibling rows so their
+     backgrounds can't paint over the glow. Buyer side uses outside
+     box-shadow on the row div; grower side uses outline on the <tr>. */
+  .product-row.drawer-active { box-shadow: 0 0 0 2px #C9A96E, 0 6px 20px rgba(201,169,110,0.45); position: relative; z-index: 5; border-radius: 4px; }
+  tbody tr.drawer-active { outline: 2px solid #C9A96E; outline-offset: -2px; position: relative; z-index: 5; }
   tbody tr.drawer-active > td { background: rgba(201,169,110,0.10); }
-  /* Reply-required tint wins over drawer-active tint when both apply */
+  /* Reply-required tint preserved when both apply */
   .product-row.reply-required.drawer-active { background: #FFF7ED; }
   tbody tr.reply-required.drawer-active > td { background: #FFF7ED; }
   .drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 0.5px solid var(--border); }

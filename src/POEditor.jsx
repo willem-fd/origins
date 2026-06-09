@@ -380,7 +380,9 @@ function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyI
       </div>
 
       {lineLocked
-        ? <span style={{ width: 30 }} />
+        ? <span className="row-delete" aria-hidden="true" style={{ visibility: 'hidden' }}>
+            <i className="ti ti-x" aria-hidden="true" />
+          </span>
         : <button className="row-delete" onClick={() => onDelete(row._id)} title="Remove">
             <i className="ti ti-x" aria-hidden="true" />
           </button>}
