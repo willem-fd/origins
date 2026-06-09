@@ -230,9 +230,6 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
         <button className="btn btn-ghost btn-sm" onClick={onBack}><i className="ti ti-arrow-left" /> Shipments</button>
         <div style={{ flex: 1 }} />
-        <button className="btn btn-ghost btn-sm" onClick={refresh} title="Refresh">
-          <i className="ti ti-refresh" /> Refresh
-        </button>
         <span className={`badge ${STATUS_BADGE[shipment.status] || 'badge-draft'}`}>{STATUS_LABELS[shipment.status] || shipment.status}</span>
       </div>
 
@@ -349,8 +346,13 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
                           {g.rows.map((l, ri) => {
                             const badge = computeBadge(l, companyId)
                             const replyRequired = badge.cls === 'badge-attention'
+                            const drawerActive  = openHistoryFor === l.id
+                            const trClasses = [
+                              replyRequired ? 'reply-required' : '',
+                              drawerActive  ? 'drawer-active'  : '',
+                            ].filter(Boolean).join(' ')
                             return (
-                            <tr key={l.id} className={replyRequired ? 'reply-required' : ''}>
+                            <tr key={l.id} className={trClasses}>
                               <td className="td-mono" style={{ color: 'var(--text-3)' }}>{ri + 1}</td>
                               <td className="td-mono" title={ORDER_TYPE_LABEL[l.order_type]}>
                                 <span style={{ fontWeight: 700, fontSize: 11 }}>{ORDER_TYPE_SHORT[l.order_type] || '—'}</span>
@@ -363,7 +365,12 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
                               <td style={{ fontSize: 12.5, color: 'var(--text-2)', maxWidth: 200 }}>{l.notes_buyer || <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
                               <td>
                                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                  <span className={`badge ${badge.cls}`} style={{ minWidth: 98, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
+                                  <span
+                                    className={`badge ${badge.cls}`}
+                                    onClick={() => { setCounterInitFor(null); setOpenHistoryFor(l.id) }}
+                                    style={{ minWidth: 98, textAlign: 'center', justifyContent: 'center', display: 'inline-flex', cursor: 'pointer' }}
+                                    title="Open line history"
+                                  >
                                     {badge.label}
                                   </span>
                                   <button className="history-btn" onClick={() => { setCounterInitFor(null); setOpenHistoryFor(l.id) }} title="Open line history" aria-label="Open line history">
@@ -373,7 +380,7 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
                               </td>
                               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                                 {isAdmin && l.state === 'pending' && (
-                                  <>
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                                     <button className="btn btn-ghost btn-sm" disabled={busy === l.id} onClick={() => act(l.id, 'po_cancel')}>
                                       <i className="ti ti-x" aria-hidden="true" /> Cancel
                                     </button>
@@ -388,7 +395,7 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
                                     >
                                       <i className="ti ti-check" aria-hidden="true" /> Confirm
                                     </button>
-                                  </>
+                                  </div>
                                 )}
                               </td>
                             </tr>

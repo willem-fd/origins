@@ -236,22 +236,35 @@ function computeBadge(row, viewerCompanyId) {
   if (replyRequired) return { label: 'Reply required', cls: 'badge-attention' }
   return { label: 'Awaiting reply', cls: 'badge-awaiting' }
 }
-function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyId, onOpenHistory, onUpdate, onDelete, onKeyDown, inputRef }) {
+function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyId, openHistoryFor, onOpenHistory, onUpdate, onDelete, onKeyDown, inputRef }) {
+  // Per-line lock — confirmed/cancelled lines can't be edited or dragged.
+  // Use the drawer's "Reopen" button to make them editable again.
+  const lineLocked = locked || row.state === 'active' || row.state === 'cancelled'
+
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging
-  } = useSortable({ id: row._id, data: { type: 'row', growerId: row.grower_id, boxNr: row.box_nr }, disabled: locked })
+  } = useSortable({ id: row._id, data: { type: 'row', growerId: row.grower_id, boxNr: row.box_nr }, disabled: lineLocked })
 
   const style = { transform: DndCSS.Transform.toString(transform), transition }
   const product = products.find(p => p.id === row.product_id)
   const ot = OT_MAP[row.order_type] || OT_MAP.open_market
   const badge = computeBadge(row, viewerCompanyId)
   const replyRequired = badge.cls === 'badge-attention'
+  const drawerActive = openHistoryFor === row._id
+
+  // Track last-valid stems for the "revert on bad bunching" behavior below
+  const lastValidStems = useRef(row.stems_ordered)
+  useEffect(() => {
+    const s = Number(row.stems_ordered) || 0
+    const pb = Number(row.stems_per_bunch) || 0
+    if (s === 0 || pb === 0 || s % pb === 0) lastValidStems.current = row.stems_ordered
+  }, [row.stems_ordered, row.stems_per_bunch])
 
   const set = (k, v) => onUpdate({ ...row, [k]: v })
 
   return (
-    <div ref={setNodeRef} style={style} className={`product-row${isDragging ? ' is-dragging' : ''}${replyRequired ? ' reply-required' : ''}`}>
-      {locked
+    <div ref={setNodeRef} style={style} className={`product-row${isDragging ? ' is-dragging' : ''}${replyRequired ? ' reply-required' : ''}${drawerActive ? ' drawer-active' : ''}`}>
+      {lineLocked
         ? <span className="row-drag" style={{ opacity: 0.25, cursor: 'default' }}><i className="ti ti-grip-vertical" aria-hidden="true" /></span>
         : <span className="row-drag" {...attributes} {...listeners}><i className="ti ti-grip-vertical" aria-hidden="true" /></span>}
       <span className="row-num">{rowIndex + 1}</span>
@@ -259,14 +272,14 @@ function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyI
       {/* Order type */}
       <div className="cell" style={{ width: 42 }}>
         <select className="cell-select" style={{ fontSize: 11, fontWeight: 700, color: 'inherit' }}
-          value={row.order_type} onChange={e => set('order_type', e.target.value)} disabled={locked}>
+          value={row.order_type} onChange={e => set('order_type', e.target.value)} disabled={lineLocked}>
           {ORDER_TYPES.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
         </select>
       </div>
 
       {/* Product */}
       <div className="cell" style={{ flex: 3, minWidth: 180 }}>
-        {locked ? (
+        {lineLocked ? (
           <span style={{ padding: '0 10px', fontSize: 12.5 }}>
             {product ? `${product.name}${product.vbn_code ? ` (${product.vbn_code})` : ''}` : <span style={{ color: 'var(--text-3)' }}>—</span>}
           </span>
@@ -284,10 +297,10 @@ function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyI
       <div className="cell" style={{ width: 72 }}>
         <input className="cell-input mono" type="number" placeholder="cm" value={row.length_cm}
           onChange={e => set('length_cm', e.target.value)}
-          onKeyDown={e => onKeyDown(e, row._id, 'length_cm')} readOnly={locked} />
+          onKeyDown={e => onKeyDown(e, row._id, 'length_cm')} readOnly={lineLocked} />
       </div>
 
-      {/* Stems — visual warning when not a clean multiple of stems_per_bunch */}
+      {/* Stems — strict: must be a whole multiple of stems_per_bunch; reverts on blur if invalid */}
       {(() => {
         const s = Number(row.stems_ordered) || 0
         const pb = Number(row.stems_per_bunch) || 0
@@ -297,7 +310,14 @@ function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyI
           <div className="cell" style={{ width: 80 }} title={bunches != null ? `${formatBunches(bunches)} bunches at ${pb} stems/bunch${invalidBunching ? ' — not a whole number of bunches' : ''}` : ''}>
             <input className={`cell-input mono${invalidBunching ? ' invalid' : ''}`} type="number" placeholder="—" value={row.stems_ordered}
               onChange={e => set('stems_ordered', e.target.value)}
-              onKeyDown={e => onKeyDown(e, row._id, 'stems_ordered')} readOnly={locked} />
+              onBlur={() => {
+                const cs = Number(row.stems_ordered) || 0
+                const cpb = Number(row.stems_per_bunch) || 0
+                if (cs > 0 && cpb > 0 && cs % cpb !== 0) {
+                  set('stems_ordered', lastValidStems.current ?? '')
+                }
+              }}
+              onKeyDown={e => onKeyDown(e, row._id, 'stems_ordered')} readOnly={lineLocked} />
           </div>
         )
       })()}
@@ -306,7 +326,7 @@ function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyI
       <div className="cell" style={{ width: 70 }}>
         <input className="cell-input mono" type="number" placeholder="25" value={row.stems_per_bunch}
           onChange={e => set('stems_per_bunch', e.target.value)}
-          onKeyDown={e => onKeyDown(e, row._id, 'stems_per_bunch')} readOnly={locked} />
+          onKeyDown={e => onKeyDown(e, row._id, 'stems_per_bunch')} readOnly={lineLocked} />
       </div>
 
       {/* Price — auto-normalize on blur to "X,XX" */}
@@ -314,7 +334,7 @@ function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyI
         <input className="cell-input mono" type="text" inputMode="decimal" placeholder="0,00" value={row.price_ordered}
           onChange={e => set('price_ordered', e.target.value.replace('.', ','))}
           onBlur={e => { const n = normalizePrice(e.target.value); if (n !== row.price_ordered) set('price_ordered', n) }}
-          onKeyDown={e => onKeyDown(e, row._id, 'price_ordered')} readOnly={locked} />
+          onKeyDown={e => onKeyDown(e, row._id, 'price_ordered')} readOnly={lineLocked} />
       </div>
 
       {/* Total */}
@@ -330,13 +350,18 @@ function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyI
       <div className="cell" style={{ flex: 1, minWidth: 80 }}>
         <input className="cell-input" placeholder="notes" value={row.notes_buyer}
           onChange={e => set('notes_buyer', e.target.value)}
-          onKeyDown={e => onKeyDown(e, row._id, 'notes_buyer')} readOnly={locked} />
+          onKeyDown={e => onKeyDown(e, row._id, 'notes_buyer')} readOnly={lineLocked} />
       </div>
 
-      {/* State (W3 lifecycle: pending / confirmed / cancelled) + history icon */}
+      {/* State (lifecycle: pending / confirmed / cancelled) + history icon. Badge or icon opens the drawer. */}
       <div className="cell" style={{ width: 130, justifyContent: 'center', gap: 6 }}>
         {showState && row.state ? (
-          <span className={`badge ${badge.cls}`} style={{ minWidth: 98, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
+          <span
+            className={`badge ${badge.cls}`}
+            onClick={!row.isNew && onOpenHistory ? () => onOpenHistory(row._id) : undefined}
+            style={{ minWidth: 98, textAlign: 'center', justifyContent: 'center', display: 'inline-flex', cursor: !row.isNew && onOpenHistory ? 'pointer' : 'default' }}
+            title={!row.isNew && onOpenHistory ? 'Open line history' : ''}
+          >
             {badge.label}
           </span>
         ) : (
@@ -354,7 +379,7 @@ function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyI
         )}
       </div>
 
-      {locked
+      {lineLocked
         ? <span style={{ width: 30 }} />
         : <button className="row-delete" onClick={() => onDelete(row._id)} title="Remove">
             <i className="ti ti-x" aria-hidden="true" />
@@ -364,7 +389,7 @@ function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyI
 }
 
 // ── Droppable grower block ─────────────────────────────────────────────────────
-function GrowerBlock({ block, blockIndex, growers, products, showState, locked, viewerCompanyId, onOpenHistory, onUpdate, onDelete, onAddGrower }) {
+function GrowerBlock({ block, blockIndex, growers, products, showState, locked, viewerCompanyId, openHistoryFor, onOpenHistory, onUpdate, onDelete, onAddGrower }) {
   const [growerProducts, setGrowerProducts] = useState(null) // null = loading, [] = none set
 
   // Load this grower's product catalogue
@@ -560,6 +585,7 @@ function GrowerBlock({ block, blockIndex, growers, products, showState, locked, 
                       showState={showState}
                       locked={locked}
                       viewerCompanyId={viewerCompanyId}
+                      openHistoryFor={openHistoryFor}
                       onOpenHistory={onOpenHistory}
                       onUpdate={updated => updateRow(boxIdx, row._id, updated)}
                       onDelete={rowId => deleteRow(boxIdx, rowId)}
@@ -901,6 +927,7 @@ export default function POEditor({ shipmentId, companyId, status, growers, produ
                 showState={status !== 'draft'}
                 locked={locked}
                 viewerCompanyId={companyId}
+                openHistoryFor={openHistoryFor}
                 onOpenHistory={setOpenHistoryFor}
                 onUpdate={updated => updateBlock(idx, updated)}
                 onDelete={growerId => deleteBlock(growerId)}

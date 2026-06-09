@@ -159,12 +159,12 @@ export const CSS = `
   /* BADGES */
   .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 500; }
   .badge-draft     { background: var(--surface-3); color: var(--text-2); }
-  .badge-active    { background: #15803D; color: #FFFFFF; font-weight: 600; }
+  .badge-active    { background: #EAF2EE; color: #1A6640; font-weight: 600; }
   .badge-completed { background: var(--surface-3); color: var(--text-2); }
   .badge-pending   { background: var(--surface-3); color: var(--text-2); }
-  .badge-cancelled { background: #B91C1C; color: #FFFFFF; font-weight: 600; }
+  .badge-cancelled { background: #FDEBEB; color: #8B1818; font-weight: 600; }
   .badge-awaiting  { background: var(--surface-3); color: var(--text-3); }
-  .badge-attention { background: #EA580C; color: #FFFFFF; font-weight: 600; }
+  .badge-attention { background: #FEF3E2; color: #B45309; font-weight: 600; }
   .badge-dropped   { background: #FEF3E8; color: #7A4A10; }
   .badge-transit   { background: #EAF0FA; color: #1E4080; }
   .badge-departed  { background: #F0E8FA; color: #5B21B6; }
@@ -524,10 +524,14 @@ export const CSS = `
   .add-product-row:hover { background: var(--green-pale); }
 
   /* ── Line history drawer ─────────────────────────────────────────────── */
-  .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.18); display: flex; justify-content: flex-end; z-index: 80; animation: fade-in 0.12s ease; }
-  .drawer { width: 480px; max-width: 92vw; height: 100vh; background: var(--surface); box-shadow: -4px 0 24px rgba(0,0,0,0.12); overflow-y: auto; animation: drawer-in 0.18s ease; display: flex; flex-direction: column; }
-  @keyframes drawer-in { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.08); display: flex; justify-content: flex-end; z-index: 80; animation: fade-in 0.18s ease; }
+  .drawer { width: 480px; max-width: 92vw; height: 100vh; background: var(--surface); box-shadow: -4px 0 24px rgba(0,0,0,0.12); overflow-y: auto; animation: drawer-in 0.25s cubic-bezier(0.22, 0.61, 0.36, 1); display: flex; flex-direction: column; }
+  @keyframes drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
   @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Glow ring on the line being viewed in the drawer (brass/gold accent) */
+  .product-row.drawer-active { box-shadow: 0 0 0 2px #C9A96E, 0 4px 14px rgba(201,169,110,0.35); position: relative; z-index: 90; border-radius: 6px; }
+  tbody tr.drawer-active > td { box-shadow: inset 0 0 0 1.5px #C9A96E; position: relative; z-index: 90; }
   .drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 0.5px solid var(--border); }
   .drawer-title { font-size: 14px; font-weight: 600; color: var(--text-1); }
   .drawer-section { padding: 16px 18px; border-bottom: 0.5px solid var(--border); }

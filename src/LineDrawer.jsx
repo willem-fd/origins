@@ -7,18 +7,21 @@ const ACTION_LABEL = {
   confirm: 'Confirmed',
   cancel:  'Cancelled',
   counter: 'Counter offer',
+  reopen:  'Reopened',
 }
 const ACTION_ICON = {
   ask:     'send',
   confirm: 'check',
   cancel:  'x',
   counter: 'arrows-exchange',
+  reopen:  'rotate-clockwise',
 }
 const ACTION_COLOR = {
   ask:     'var(--text-2)',
-  confirm: '#15803d',
-  cancel:  '#b91c1c',
+  confirm: '#1A6640',
+  cancel:  '#8B1818',
   counter: 'var(--brown-dark)',
+  reopen:  'var(--brown-dark)',
 }
 const FRIENDLY_ERR = {
   price_required:      'Cannot confirm — the buyer left the price open. Counter with a price first.',
@@ -26,20 +29,20 @@ const FRIENDLY_ERR = {
   shipment_not_active: 'Shipment is not in an active state.',
   not_authorized:      'You are not authorised to do that.',
   line_cancelled:      'This line is cancelled.',
+  not_reopenable:      'This line cannot be reopened.',
+  stems_not_multiple:  'Stems must be a multiple of stems-per-bunch.',
 }
 
 const STATE_LABEL = { pending: 'Pending', active: 'Confirmed', cancelled: 'Cancelled' }
-const STATE_BADGE = { pending: 'badge-pending', active: 'badge-active', cancelled: 'badge-completed' }
+const STATE_BADGE = { pending: 'badge-pending', active: 'badge-active', cancelled: 'badge-cancelled' }
 
 const fmtPrice = (v) => v == null ? '—' : `$${Number(v).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const fmtInt   = (v) => v == null ? '—' : Number(v).toLocaleString('de-DE')
 const fmtDate  = (s) => new Date(s).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
-// LineDrawer — slides in from the right; shows current values + the
-// immutable thread of asks / counters / confirms / cancels for one line.
-// Hosts the Counter form for grower-side admins on pending lines.
 export default function LineDrawer({ poId, initialCounterMode, onClose, onActionTaken }) {
   const [line, setLine] = useState(null)
+  const [shipment, setShipment] = useState(null)
   const [actions, setActions] = useState([])
   const [companyMap, setCompanyMap] = useState({})
   const [profile, setProfile] = useState(null)
@@ -56,7 +59,7 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
       const [lRes, aRes, pRes] = await Promise.all([
         supabase
           .from('purchase_orders')
-          .select('id, state, price_ordered, stems_ordered, stems_per_bunch, length_cm, notes_buyer, order_type, box_type, box_nr, boxmark, grower_company_id, shipment_id, products(name, vbn_code)')
+          .select('id, state, price_ordered, stems_ordered, stems_per_bunch, length_cm, notes_buyer, order_type, box_type, box_nr, boxmark, grower_company_id, shipment_id, products(name, vbn_code), shipments(buyer_company_id)')
           .eq('id', poId).single(),
         supabase
           .from('po_actions')
@@ -75,20 +78,22 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
       const l = lRes.data
       const a = aRes.data || []
       const p = pRes.data
+      const buyerId = l.shipments?.buyer_company_id
 
       const companyIds = [...new Set(a.map(x => x.actor_company_id).filter(Boolean))]
       if (l.grower_company_id) companyIds.push(l.grower_company_id)
+      if (buyerId) companyIds.push(buyerId)
       const uniq = [...new Set(companyIds)]
       const { data: cs } = uniq.length
         ? await supabase.from('companies').select('id, name, brand_name, type').in('id', uniq)
         : { data: [] }
 
       setLine(l)
+      setShipment({ buyer_company_id: buyerId })
       setActions(a)
       setProfile(p)
       setCompanyMap(Object.fromEntries((cs || []).map(c => [c.id, c])))
 
-      // If parent requested the counter form ready on open, populate + show it
       if (initialCounterMode && l.state === 'pending') {
         setCounterForm({
           price: l.price_ordered != null ? String(l.price_ordered).replace('.', ',') : '',
@@ -115,8 +120,21 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
   if (!poId) return null
 
   const isAdmin       = profile && (profile.is_super_admin || profile.role === 'admin')
-  const isGrowerSide  = profile && line && profile.company_id === line.grower_company_id
-  const canCounter    = isAdmin && isGrowerSide && line?.state === 'pending'
+  const myCompany     = profile?.company_id
+  const buyerId       = shipment?.buyer_company_id
+  const growerId      = line?.grower_company_id
+  const iAmGrower     = myCompany && myCompany === growerId
+  const iAmBuyer      = myCompany && myCompany === buyerId
+  const iAmInvolved   = iAmGrower || iAmBuyer
+  const lastAction    = actions[0]
+  const lastByMe      = lastAction && myCompany && lastAction.actor_company_id === myCompany
+  const replyRequired = line?.state === 'pending' && lastAction && !lastByMe
+
+  // Action visibility
+  const canConfirm = isAdmin && iAmInvolved && line?.state === 'pending' && replyRequired && line?.price_ordered != null
+  const canCounter = isAdmin && iAmGrower && line?.state === 'pending'  // buyer counters by editing inline
+  const canCancel  = isAdmin && iAmInvolved && (line?.state === 'pending' || line?.state === 'active')
+  const canReopen  = isAdmin && iAmInvolved && (line?.state === 'active' || line?.state === 'cancelled')
 
   const closeOnBackdrop = (e) => { if (e.target === e.currentTarget) onClose() }
   const companyName = (id) => {
@@ -147,6 +165,10 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
     const stpbNum  = counterForm.stpb  ? parseInt(counterForm.stpb,  10) : null
     if (stemsNum != null && (isNaN(stemsNum) || stemsNum <= 0)) { setErr('Stems must be a positive number'); return }
     if (stpbNum  != null && (isNaN(stpbNum)  || stpbNum  <= 0)) { setErr('Stems per bunch must be a positive number'); return }
+    if (stemsNum != null && stpbNum != null && stemsNum % stpbNum !== 0) {
+      setErr(`Stems (${stemsNum}) must be a whole multiple of stems-per-bunch (${stpbNum}).`)
+      return
+    }
 
     setSubmitting(true)
     const { data, error } = await supabase.rpc('po_counter', {
@@ -168,6 +190,39 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
     await reload()
   }
 
+  const runRpc = async (fnName, confirmMsg) => {
+    if (confirmMsg && !window.confirm(confirmMsg)) return
+    setErr('')
+    setSubmitting(true)
+    const { data, error } = await supabase.rpc(fnName, { p_po_id: poId })
+    setSubmitting(false)
+    if (error || !data?.ok) {
+      const code = data?.error || error?.message || 'Action failed'
+      setErr(FRIENDLY_ERR[code] || code)
+      return
+    }
+    onActionTaken?.()
+    await reload()
+  }
+
+  // Storyline text
+  let storyMsg = null, storyColor = 'var(--text-2)', storyBg = 'var(--surface-2)'
+  if (line) {
+    if (line.state === 'active') {
+      storyMsg = 'Line confirmed. Both sides agree.'
+      storyColor = '#1A6640'; storyBg = '#EAF2EE'
+    } else if (line.state === 'cancelled') {
+      storyMsg = 'Line cancelled.'
+      storyColor = '#8B1818'; storyBg = '#FDEBEB'
+    } else if (lastAction && lastByMe) {
+      const otherCompanyId = iAmGrower ? buyerId : growerId
+      storyMsg = `Awaiting a reply from ${companyName(otherCompanyId)}.`
+    } else if (lastAction && !lastByMe) {
+      storyMsg = 'Reply required: please confirm, counter or cancel.'
+      storyColor = '#B45309'; storyBg = '#FEF3E2'
+    }
+  }
+
   return (
     <div className="drawer-backdrop" onClick={closeOnBackdrop}>
       <div className="drawer" role="dialog" aria-label="Line history">
@@ -186,41 +241,11 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
           <>
             <div className="drawer-section">
               <div className="drawer-section-title">Current</div>
-              {/* Status story: tells the viewer what just happened and what's expected */}
-              {(() => {
-                const myCompany  = profile?.company_id
-                const lastAction = actions[0]
-                const lastByMe   = lastAction && myCompany && lastAction.actor_company_id === myCompany
-                const iAmGrower  = myCompany && myCompany === line.grower_company_id
-                let msg = null, color = 'var(--text-2)', bg = 'var(--surface-2)'
-
-                if (line.state === 'active') {
-                  msg = 'Line confirmed. Both sides agree.'
-                  color = '#15803d'; bg = '#EAF2EE'
-                } else if (line.state === 'cancelled') {
-                  msg = 'Line cancelled.'
-                  color = '#b91c1c'; bg = '#fef2f2'
-                } else if (lastAction && lastByMe) {
-                  msg = iAmGrower
-                    ? 'Awaiting buyer\u2019s response.'
-                    : `Awaiting ${companyName(line.grower_company_id) || 'grower'}.`
-                } else if (lastAction && !lastByMe) {
-                  if (lastAction.action === 'counter') {
-                    msg = 'Counter received. Reply required: confirm, counter back, or cancel.'
-                  } else if (lastAction.action === 'ask') {
-                    msg = 'Reply required: confirm, counter, or cancel.'
-                  } else {
-                    msg = 'Reply required.'
-                  }
-                  color = '#B45309'; bg = '#FEF3E2'
-                }
-
-                return msg ? (
-                  <div style={{ background: bg, color, padding: '8px 12px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, marginBottom: 12 }}>
-                    {msg}
-                  </div>
-                ) : null
-              })()}
+              {storyMsg && (
+                <div style={{ background: storyBg, color: storyColor, padding: '8px 12px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, marginBottom: 12 }}>
+                  {storyMsg}
+                </div>
+              )}
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>
                 {line.products?.name || '—'}
                 {line.products?.vbn_code && <span style={{ marginLeft: 6, color: 'var(--text-3)', fontSize: 12 }}>{line.products.vbn_code}</span>}
@@ -249,19 +274,10 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
               )}
             </div>
 
-            {canCounter && (
+            {/* Actions */}
+            {(canConfirm || canCounter || canCancel || canReopen) && (
               <div className="drawer-section" style={{ background: 'var(--surface-2)' }}>
-                {!counterMode ? (
-                  <>
-                    <div className="drawer-section-title">Counter offer</div>
-                    <div style={{ fontSize: 12.5, color: 'var(--text-2)', marginBottom: 10 }}>
-                      Propose different values to the buyer. The line stays pending — the buyer will see your counter and can confirm or counter back.
-                    </div>
-                    <button className="btn btn-primary btn-sm" onClick={beginCounter}>
-                      <i className="ti ti-arrows-exchange" aria-hidden="true" /> Counter
-                    </button>
-                  </>
-                ) : (
+                {counterMode ? (
                   <>
                     <div className="drawer-section-title">Your counter offer</div>
                     <div className="counter-form">
@@ -304,11 +320,37 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
                     </div>
                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                       <button className="btn btn-ghost btn-sm" onClick={() => { setCounterMode(false); setErr('') }} disabled={submitting}>
-                        Cancel
+                        Back
                       </button>
                       <button className="btn btn-primary btn-sm" onClick={submitCounter} disabled={submitting}>
                         <i className="ti ti-send" aria-hidden="true" /> {submitting ? 'Sending…' : 'Send counter'}
                       </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="drawer-section-title">Actions</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {canConfirm && (
+                        <button className="btn btn-primary btn-sm" onClick={() => runRpc('po_confirm')} disabled={submitting}>
+                          <i className="ti ti-check" aria-hidden="true" /> Confirm
+                        </button>
+                      )}
+                      {canCounter && (
+                        <button className="btn btn-ghost btn-sm" onClick={beginCounter} disabled={submitting}>
+                          <i className="ti ti-arrows-exchange" aria-hidden="true" /> Counter
+                        </button>
+                      )}
+                      {canCancel && (
+                        <button className="btn btn-ghost btn-sm" onClick={() => runRpc('po_cancel', 'Cancel this line?')} disabled={submitting}>
+                          <i className="ti ti-x" aria-hidden="true" /> Cancel
+                        </button>
+                      )}
+                      {canReopen && (
+                        <button className="btn btn-ghost btn-sm" onClick={() => runRpc('po_reopen', 'Reopen this line for negotiation? The other side will see a new ask.')} disabled={submitting}>
+                          <i className="ti ti-rotate-clockwise" aria-hidden="true" /> Reopen
+                        </button>
+                      )}
                     </div>
                   </>
                 )}
@@ -345,7 +387,7 @@ function KV({ label, value, children }) {
 
 function ThreadItem({ action, who }) {
   const f = action.fields_json || {}
-  const showValues = action.action !== 'cancel'
+  const showValues = action.action !== 'cancel' && action.action !== 'reopen'
   const hasPrice = f.price_ordered != null
   return (
     <div className="thread-item">
