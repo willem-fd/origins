@@ -533,9 +533,16 @@ export const CSS = `
   @keyframes drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
   @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
-  /* Glow ring on the line being viewed in the drawer (brass/gold accent) */
-  .product-row.drawer-active { box-shadow: 0 0 0 2px #C9A96E, 0 4px 14px rgba(201,169,110,0.35); position: relative; z-index: 90; border-radius: 6px; }
-  tbody tr.drawer-active > td { box-shadow: inset 0 0 0 1.5px #C9A96E; position: relative; z-index: 90; }
+  /* Drawer-active row: brass/gold ring + subtle tint so the chosen line
+     is clearly visible whether or not the cursor is hovering it.
+     Buyer side uses box-shadow on a div; grower side uses outline on the
+     <tr> for a single ring around the whole row (not per-cell). */
+  .product-row.drawer-active { box-shadow: 0 0 0 2px #C9A96E, 0 4px 14px rgba(201,169,110,0.30); position: relative; z-index: 90; border-radius: 6px; background: rgba(201,169,110,0.07); }
+  tbody tr.drawer-active { outline: 2px solid #C9A96E; outline-offset: -2px; position: relative; z-index: 90; }
+  tbody tr.drawer-active > td { background: rgba(201,169,110,0.07); }
+  /* Reply-required tint wins over drawer-active tint when both apply */
+  .product-row.reply-required.drawer-active { background: #FFF7ED; }
+  tbody tr.reply-required.drawer-active > td { background: #FFF7ED; }
   .drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 0.5px solid var(--border); }
   .drawer-title { font-size: 14px; font-weight: 600; color: var(--text-1); }
   .drawer-section { padding: 16px 18px; border-bottom: 0.5px solid var(--border); }

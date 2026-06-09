@@ -280,7 +280,7 @@ function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyI
       {/* Product */}
       <div className="cell" style={{ flex: 3, minWidth: 180 }}>
         {lineLocked ? (
-          <span style={{ padding: '0 10px', fontSize: 12.5 }}>
+          <span style={{ padding: '9px 10px', fontSize: 12.5 }}>
             {product ? `${product.name}${product.vbn_code ? ` (${product.vbn_code})` : ''}` : <span style={{ color: 'var(--text-3)' }}>—</span>}
           </span>
         ) : (
