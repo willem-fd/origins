@@ -198,12 +198,21 @@ function StatusDot({ status, onChange }) {
 }
 
 // ── Sortable product row ─────────────────────────────────────────────────────
-const STATE_PILL = {
-  pending:   { label: 'Pending',   cls: 'badge-pending' },
-  active:    { label: 'Confirmed', cls: 'badge-active' },
-  cancelled: { label: 'Cancelled', cls: 'badge-completed' },
+// Badge label + colour depend on state + who acted last.
+// From the buyer's perspective:
+//   pending, buyer was last actor   → "Awaiting grower"   (gray, neutral)
+//   pending, grower was last actor  → "Reply required"    (orange, attention)
+//   active                          → "Confirmed"
+//   cancelled                       → "Cancelled"
+function computeBadge(row, viewerCompanyId) {
+  if (row.state === 'active')    return { label: 'Confirmed', cls: 'badge-active' }
+  if (row.state === 'cancelled') return { label: 'Cancelled', cls: 'badge-completed' }
+  // pending
+  const replyRequired = row.last_action_by_company && row.last_action_by_company !== viewerCompanyId
+  if (replyRequired) return { label: 'Reply required', cls: 'badge-attention' }
+  return { label: 'Awaiting grower', cls: 'badge-awaiting' }
 }
-function ProductRow({ row, rowIndex, products, showState, locked, onOpenHistory, onUpdate, onDelete, onKeyDown, inputRef }) {
+function ProductRow({ row, rowIndex, products, showState, locked, viewerCompanyId, onOpenHistory, onUpdate, onDelete, onKeyDown, inputRef }) {
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging
   } = useSortable({ id: row._id, data: { type: 'row', growerId: row.grower_id, boxNr: row.box_nr }, disabled: locked })
@@ -290,12 +299,15 @@ function ProductRow({ row, rowIndex, products, showState, locked, onOpenHistory,
       </div>
 
       {/* State (W3 lifecycle: pending / confirmed / cancelled) + history icon */}
-      <div className="cell" style={{ width: 110, justifyContent: 'center', gap: 6 }}>
-        {showState && row.state ? (
-          <span className={`badge ${STATE_PILL[row.state]?.cls || 'badge-draft'}`} style={{ minWidth: 78, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
-            {STATE_PILL[row.state]?.label || row.state}
-          </span>
-        ) : (
+      <div className="cell" style={{ width: 130, justifyContent: 'center', gap: 6 }}>
+        {showState && row.state ? (() => {
+          const b = computeBadge(row, viewerCompanyId)
+          return (
+            <span className={`badge ${b.cls}`} style={{ minWidth: 98, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
+              {b.label}
+            </span>
+          )
+        })() : (
           <span style={{ color: 'var(--text-3)', fontSize: 11 }}>—</span>
         )}
         {!row.isNew && onOpenHistory && (
@@ -320,7 +332,7 @@ function ProductRow({ row, rowIndex, products, showState, locked, onOpenHistory,
 }
 
 // ── Droppable grower block ─────────────────────────────────────────────────────
-function GrowerBlock({ block, blockIndex, growers, products, showState, locked, onOpenHistory, onUpdate, onDelete, onAddGrower }) {
+function GrowerBlock({ block, blockIndex, growers, products, showState, locked, viewerCompanyId, onOpenHistory, onUpdate, onDelete, onAddGrower }) {
   const [growerProducts, setGrowerProducts] = useState(null) // null = loading, [] = none set
 
   // Load this grower's product catalogue
@@ -458,7 +470,7 @@ function GrowerBlock({ block, blockIndex, growers, products, showState, locked, 
             <span style={{ width: 82, padding: '6px 10px' }}>Price $</span>
             <span style={{ width: 88, padding: '6px 10px' }}>Total $</span>
             <span style={{ flex: 1, minWidth: 80, padding: '6px 10px' }}>Notes</span>
-            <span style={{ width: 110, padding: '6px 10px', textAlign: 'center' }}>State</span>
+            <span style={{ width: 130, padding: '6px 10px', textAlign: 'center' }}>State</span>
             <span style={{ width: 30 }} />
           </div>
 
@@ -501,6 +513,7 @@ function GrowerBlock({ block, blockIndex, growers, products, showState, locked, 
                       products={availableProducts}
                       showState={showState}
                       locked={locked}
+                      viewerCompanyId={viewerCompanyId}
                       onOpenHistory={onOpenHistory}
                       onUpdate={updated => updateRow(boxIdx, row._id, updated)}
                       onDelete={rowId => deleteRow(boxIdx, rowId)}
@@ -584,6 +597,7 @@ export default function POEditor({ shipmentId, companyId, status, growers, produ
           order_type: po.order_type || 'open_market',
           status: po.status || 'pending',
           state: po.state || 'pending',
+          last_action_by_company: po.last_action_by_company || null,
           length_cm: po.length_cm || '',
           stems_ordered: po.stems_ordered || '',
           stems_per_bunch: po.stems_per_bunch || 25,
@@ -840,6 +854,7 @@ export default function POEditor({ shipmentId, companyId, status, growers, produ
                 products={products}
                 showState={status !== 'draft'}
                 locked={locked}
+                viewerCompanyId={companyId}
                 onOpenHistory={setOpenHistoryFor}
                 onUpdate={updated => updateBlock(idx, updated)}
                 onDelete={growerId => deleteBlock(growerId)}

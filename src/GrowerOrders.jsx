@@ -3,8 +3,18 @@ import { supabase } from './supabase'
 import { flag, STATUS_LABELS, STATUS_BADGE } from './constants'
 import LineDrawer from './LineDrawer'
 
-const STATE_LABEL = { pending: 'Pending', active: 'Confirmed', cancelled: 'Cancelled' }
-const STATE_BADGE = { pending: 'badge-pending', active: 'badge-active', cancelled: 'badge-completed' }
+// Badge label + style for the grower's view.
+//   pending, grower (= viewer) was last actor → "Awaiting buyer"   (gray)
+//   pending, buyer was last actor             → "Reply required"    (orange)
+//   active                                    → "Confirmed"
+//   cancelled                                 → "Cancelled"
+function computeBadge(line, viewerCompanyId) {
+  if (line.state === 'active')    return { label: 'Confirmed', cls: 'badge-active' }
+  if (line.state === 'cancelled') return { label: 'Cancelled', cls: 'badge-completed' }
+  const replyRequired = line.last_action_by_company && line.last_action_by_company !== viewerCompanyId
+  if (replyRequired) return { label: 'Reply required', cls: 'badge-attention' }
+  return { label: 'Awaiting buyer', cls: 'badge-awaiting' }
+}
 const ORDER_TYPE_SHORT = { open_market: 'OM', standing: 'SO', repeating: 'RO' }
 const ORDER_TYPE_LABEL = { open_market: 'Open market', standing: 'Standing order', repeating: 'Repeating order' }
 
@@ -173,7 +183,7 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
 
     const { data: pos, error: poErr } = await supabase
       .from('purchase_orders')
-      .select('id, state, price_ordered, stems_ordered, stems_per_bunch, length_cm, notes_buyer, order_type, box_type, box_nr, boxmark, sort_order, products(name, vbn_code)')
+      .select('id, state, price_ordered, stems_ordered, stems_per_bunch, length_cm, notes_buyer, order_type, box_type, box_nr, boxmark, sort_order, last_action_by_company, products(name, vbn_code)')
       .eq('grower_company_id', companyId)
       .eq('shipment_id', shipmentId)
       .order('box_nr').order('sort_order')
@@ -327,9 +337,14 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
                               <td style={{ fontSize: 12.5, color: 'var(--text-2)', maxWidth: 200 }}>{l.notes_buyer || <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
                               <td>
                                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                  <span className={`badge ${STATE_BADGE[l.state] || 'badge-draft'}`} style={{ minWidth: 78, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
-                                    {STATE_LABEL[l.state] || l.state}
-                                  </span>
+                                  {(() => {
+                                    const b = computeBadge(l, companyId)
+                                    return (
+                                      <span className={`badge ${b.cls}`} style={{ minWidth: 98, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
+                                        {b.label}
+                                      </span>
+                                    )
+                                  })()}
                                   <button className="history-btn" onClick={() => setOpenHistoryFor(l.id)} title="Open line history" aria-label="Open line history">
                                     <i className="ti ti-history" aria-hidden="true" />
                                   </button>

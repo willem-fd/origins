@@ -175,6 +175,41 @@ export default function LineDrawer({ poId, onClose, onActionTaken }) {
           <>
             <div className="drawer-section">
               <div className="drawer-section-title">Current</div>
+              {/* Status story: tells the viewer what just happened and what's expected */}
+              {(() => {
+                const myCompany  = profile?.company_id
+                const lastAction = actions[0]
+                const lastByMe   = lastAction && myCompany && lastAction.actor_company_id === myCompany
+                const iAmGrower  = myCompany && myCompany === line.grower_company_id
+                let msg = null, color = 'var(--text-2)', bg = 'var(--surface-2)'
+
+                if (line.state === 'active') {
+                  msg = 'Line confirmed. Both sides agree.'
+                  color = '#15803d'; bg = '#EAF2EE'
+                } else if (line.state === 'cancelled') {
+                  msg = 'Line cancelled.'
+                  color = '#b91c1c'; bg = '#fef2f2'
+                } else if (lastAction && lastByMe) {
+                  msg = iAmGrower
+                    ? 'Awaiting buyer\u2019s response.'
+                    : `Awaiting ${companyName(line.grower_company_id) || 'grower'}.`
+                } else if (lastAction && !lastByMe) {
+                  if (lastAction.action === 'counter') {
+                    msg = 'Counter received. Reply required: confirm, counter back, or cancel.'
+                  } else if (lastAction.action === 'ask') {
+                    msg = 'Reply required: confirm, counter, or cancel.'
+                  } else {
+                    msg = 'Reply required.'
+                  }
+                  color = '#B45309'; bg = '#FEF3E2'
+                }
+
+                return msg ? (
+                  <div style={{ background: bg, color, padding: '8px 12px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, marginBottom: 12 }}>
+                    {msg}
+                  </div>
+                ) : null
+              })()}
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>
                 {line.products?.name || '—'}
                 {line.products?.vbn_code && <span style={{ marginLeft: 6, color: 'var(--text-3)', fontSize: 12 }}>{line.products.vbn_code}</span>}

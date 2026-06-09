@@ -166,6 +166,8 @@ export const CSS = `
   .badge-arrived   { background: #EAF2EE; color: #1A6640; }
   .badge-completed { background: var(--surface-3); color: var(--text-2); }
   .badge-pending   { background: var(--surface-3); color: var(--text-2); }
+  .badge-awaiting  { background: var(--surface-3); color: var(--text-2); }
+  .badge-attention { background: #FEF3E2; color: #B45309; }
   .badge-confirmed { background: #EAF2EE; color: #1A6640; }
   .badge-partial   { background: #FEF3E8; color: #7A4A10; }
   .badge-counter   { background: #EAF0FA; color: #1E4080; }
