@@ -11,6 +11,7 @@ import {
 import { CSS as DndCSS } from '@dnd-kit/utilities'
 import { supabase } from './supabase'
 import { SaveTemplateModal, LoadTemplateModal, templateItemsToPOPayloads } from './Templates'
+import LineDrawer from './LineDrawer'
 
 const STATUSES = [
   { key: 'pending',      label: 'Pending',     cls: 'status-pending' },
@@ -202,7 +203,7 @@ const STATE_PILL = {
   active:    { label: 'Confirmed', cls: 'badge-active' },
   cancelled: { label: 'Cancelled', cls: 'badge-completed' },
 }
-function ProductRow({ row, rowIndex, products, showState, locked, onUpdate, onDelete, onKeyDown, inputRef }) {
+function ProductRow({ row, rowIndex, products, showState, locked, onOpenHistory, onUpdate, onDelete, onKeyDown, inputRef }) {
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging
   } = useSortable({ id: row._id, data: { type: 'row', growerId: row.grower_id, boxNr: row.box_nr }, disabled: locked })
@@ -288,14 +289,24 @@ function ProductRow({ row, rowIndex, products, showState, locked, onUpdate, onDe
           onKeyDown={e => onKeyDown(e, row._id, 'notes_buyer')} readOnly={locked} />
       </div>
 
-      {/* State (W3 lifecycle: pending / confirmed / cancelled) */}
-      <div className="cell" style={{ width: 110, justifyContent: 'center' }}>
+      {/* State (W3 lifecycle: pending / confirmed / cancelled) + history icon */}
+      <div className="cell" style={{ width: 110, justifyContent: 'center', gap: 6 }}>
         {showState && row.state ? (
           <span className={`badge ${STATE_PILL[row.state]?.cls || 'badge-draft'}`} style={{ minWidth: 78, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
             {STATE_PILL[row.state]?.label || row.state}
           </span>
         ) : (
           <span style={{ color: 'var(--text-3)', fontSize: 11 }}>—</span>
+        )}
+        {!row.isNew && onOpenHistory && (
+          <button
+            className="history-btn"
+            onClick={() => onOpenHistory(row._id)}
+            title="Open line history"
+            aria-label="Open line history"
+          >
+            <i className="ti ti-history" aria-hidden="true" />
+          </button>
         )}
       </div>
 
@@ -309,7 +320,7 @@ function ProductRow({ row, rowIndex, products, showState, locked, onUpdate, onDe
 }
 
 // ── Droppable grower block ─────────────────────────────────────────────────────
-function GrowerBlock({ block, blockIndex, growers, products, showState, locked, onUpdate, onDelete, onAddGrower }) {
+function GrowerBlock({ block, blockIndex, growers, products, showState, locked, onOpenHistory, onUpdate, onDelete, onAddGrower }) {
   const [growerProducts, setGrowerProducts] = useState(null) // null = loading, [] = none set
 
   // Load this grower's product catalogue
@@ -490,6 +501,7 @@ function GrowerBlock({ block, blockIndex, growers, products, showState, locked, 
                       products={availableProducts}
                       showState={showState}
                       locked={locked}
+                      onOpenHistory={onOpenHistory}
                       onUpdate={updated => updateRow(boxIdx, row._id, updated)}
                       onDelete={rowId => deleteRow(boxIdx, rowId)}
                       onKeyDown={handleKeyDown}
@@ -524,6 +536,9 @@ export default function POEditor({ shipmentId, companyId, status, growers, produ
   // (status = in_transit) and beyond, the list is locked. Buyer must Reopen
   // purchasing to make changes.
   const locked = status !== 'draft' && status !== 'active'
+
+  // Which line's history drawer is open (null = closed)
+  const [openHistoryFor, setOpenHistoryFor] = useState(null)
   const [blocks, setBlocks] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -825,6 +840,7 @@ export default function POEditor({ shipmentId, companyId, status, growers, produ
                 products={products}
                 showState={status !== 'draft'}
                 locked={locked}
+                onOpenHistory={setOpenHistoryFor}
                 onUpdate={updated => updateBlock(idx, updated)}
                 onDelete={growerId => deleteBlock(growerId)}
               />
@@ -898,6 +914,8 @@ export default function POEditor({ shipmentId, companyId, status, growers, produ
           onClose={() => setShowLoadTpl(false)}
         />
       )}
+
+      <LineDrawer poId={openHistoryFor} onClose={() => setOpenHistoryFor(null)} />
     </DndContext>
   )
 }

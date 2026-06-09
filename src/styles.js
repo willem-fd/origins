@@ -511,5 +511,30 @@ export const CSS = `
   .filter-chip { padding: 5px 12px; border-radius: 20px; font-size: 12px; border: 0.5px solid var(--border-md); cursor: pointer; background: var(--surface); color: var(--text-2); transition: all 0.12s; }
   .filter-chip:hover { background: var(--surface-2); }
   .filter-chip.active { background: var(--green); color: #fff; border-color: var(--green); }
+  .history-btn { background: transparent; border: none; padding: 3px 5px; cursor: pointer; color: var(--text-3); font-size: 13px; border-radius: 4px; display: inline-flex; align-items: center; }
+  .history-btn:hover { background: var(--surface-2); color: var(--text-2); }
   .add-product-row:hover { background: var(--green-pale); }
+
+  /* ── Line history drawer ─────────────────────────────────────────────── */
+  .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.18); display: flex; justify-content: flex-end; z-index: 80; animation: fade-in 0.12s ease; }
+  .drawer { width: 480px; max-width: 92vw; height: 100vh; background: var(--surface); box-shadow: -4px 0 24px rgba(0,0,0,0.12); overflow-y: auto; animation: drawer-in 0.18s ease; display: flex; flex-direction: column; }
+  @keyframes drawer-in { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  .drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 0.5px solid var(--border); }
+  .drawer-title { font-size: 14px; font-weight: 600; color: var(--text-1); }
+  .drawer-section { padding: 16px 18px; border-bottom: 0.5px solid var(--border); }
+  .drawer-section:last-child { border-bottom: none; }
+  .drawer-section-title { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-3); margin-bottom: 10px; }
+  .kv-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 14px; }
+  .kv { }
+  .kv-label { font-size: 10.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 2px; }
+  .kv-value { font-size: 13px; font-family: var(--mono); color: var(--text-1); }
+  .thread { display: flex; flex-direction: column; gap: 14px; }
+  .thread-item { display: flex; gap: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: 8px; border: 0.5px solid var(--border); }
+  .thread-item-icon { width: 24px; height: 24px; border-radius: 12px; background: var(--surface); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; border: 0.5px solid var(--border); }
+  .thread-item-body { flex: 1; min-width: 0; }
+  .thread-item-head { display: flex; gap: 8px; align-items: baseline; }
+  .thread-item-time { font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-top: 1px; }
+  .thread-item-fields { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-2); font-family: var(--mono); }
+  .thread-item-fields strong { color: var(--text-1); font-weight: 600; }
 `

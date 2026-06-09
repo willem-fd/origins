@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { flag, STATUS_LABELS, STATUS_BADGE } from './constants'
+import LineDrawer from './LineDrawer'
 
 const STATE_LABEL = { pending: 'Pending', active: 'Confirmed', cancelled: 'Cancelled' }
 const STATE_BADGE = { pending: 'badge-pending', active: 'badge-active', cancelled: 'badge-completed' }
@@ -145,6 +146,7 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
   const [tab, setTab] = useState('orders')
   const [busy, setBusy] = useState(null)
   const [err, setErr] = useState('')
+  const [openHistoryFor, setOpenHistoryFor] = useState(null)
   const isAdmin = !!profile?.is_super_admin || profile?.role === 'admin'
 
   const refresh = async () => {
@@ -315,9 +317,14 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
                               <td className="td-mono">{l.price_ordered != null ? `$${Number(l.price_ordered).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</td>
                               <td style={{ fontSize: 12.5, color: 'var(--text-2)', maxWidth: 200 }}>{l.notes_buyer || <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
                               <td>
-                                <span className={`badge ${STATE_BADGE[l.state] || 'badge-draft'}`} style={{ minWidth: 78, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
-                                  {STATE_LABEL[l.state] || l.state}
-                                </span>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                  <span className={`badge ${STATE_BADGE[l.state] || 'badge-draft'}`} style={{ minWidth: 78, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
+                                    {STATE_LABEL[l.state] || l.state}
+                                  </span>
+                                  <button className="history-btn" onClick={() => setOpenHistoryFor(l.id)} title="Open line history" aria-label="Open line history">
+                                    <i className="ti ti-history" aria-hidden="true" />
+                                  </button>
+                                </div>
                               </td>
                               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                                 {isAdmin && l.state === 'pending' && (
@@ -353,6 +360,8 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
           </div>
         )}
       </div>
+
+      <LineDrawer poId={openHistoryFor} onClose={() => setOpenHistoryFor(null)} />
     </>
   )
 }
