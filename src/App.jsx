@@ -11,6 +11,7 @@ import TeamPage from './TeamPage'
 import GrowerOrdersPage from './GrowerOrders'
 import CountryCombobox from './CountryCombobox'
 import Auth from './Auth'
+import { DialogHost, confirmDialog, alertDialog } from './Dialog'
 import { COUNTRIES, SHIP_STATUSES, STATUS_LABELS, STATUS_BADGE, flag, fmt, validateEmail, validatePhone } from './constants'
 
 // ── Status Badge ──────────────────────────────────────────────────────────────
@@ -349,7 +350,13 @@ function ShipmentForm({ initial, logistics, buyerCompanyId, onClose, onSave, tit
         <div className="modal-footer">
           {initial?.id && (
             <button className="btn btn-danger btn-sm" style={{ marginRight: 'auto' }} onClick={async () => {
-              if (!window.confirm(`⚠️ Permanently delete this shipment and all its PO lines? This cannot be undone.`)) return
+              const ok = await confirmDialog({
+                title: 'Permanently delete this shipment?',
+                body: 'This will delete the shipment and every Purchase Order line on it. This cannot be undone.',
+                confirmLabel: 'Delete shipment',
+                tone: 'danger',
+              })
+              if (!ok) return
               await supabase.from('purchase_orders').delete().eq('shipment_id', initial.id)
               await supabase.from('shipments').delete().eq('id', initial.id)
               onSave(null) // signal deletion
@@ -440,7 +447,13 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
   }
 
   const handleDelete = async () => {
-    if (!window.confirm('Delete this draft shipment? This cannot be undone.')) return
+    const ok = await confirmDialog({
+      title: 'Delete this draft shipment?',
+      body: 'This cannot be undone.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (!ok) return
     await supabase.from('purchase_orders').delete().eq('shipment_id', s.id)
     await supabase.from('shipments').delete().eq('id', s.id)
     onDelete(s.id)
@@ -567,10 +580,13 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
               products={products}
               onStartPurchasing={s.status === 'draft' ? () => updateStatus('active') : null}
               onClosePurchasing={s.status === 'active' ? () => setConfirmClose(true) : null}
-              onReopenPurchasing={s.status === 'in_transit' ? () => {
-                if (window.confirm('This will reopen the PO list for editing. Growers will see the shipment is back in Active. Continue?')) {
-                  updateStatus('active')
-                }
+              onReopenPurchasing={s.status === 'in_transit' ? async () => {
+                const ok = await confirmDialog({
+                  title: 'Reopen purchasing?',
+                  body: 'This will reopen the PO list for editing. Growers will see the shipment is back in Active.',
+                  confirmLabel: 'Reopen',
+                })
+                if (ok) updateStatus('active')
               } : null}
             />
           </div>
@@ -694,7 +710,13 @@ function ShipmentDetail({ shipment, growers, products, logistics, allShipments, 
           shipmentId={s.id}
           shipments={allShipments}
           onClose={() => setShowSplit(false)}
-          onSplit={targetId => { setShowSplit(false); alert(`Split feature: select boxes in the PO list, then use this to move them. Full box-selection UI coming next.`) }}
+          onSplit={targetId => {
+            setShowSplit(false)
+            alertDialog({
+              title: 'Split feature — coming next',
+              body: 'Select boxes in the PO list, then use this to move them. Full box-selection UI is on the way.',
+            })
+          }}
         />
       )}
     </>
@@ -1155,6 +1177,7 @@ export default function App() {
   return (
     <>
       <style>{CSS}</style>
+      <DialogHost />
       <div className="app">
         <Sidebar
           page={selectedShipment ? 'shipments' : page}

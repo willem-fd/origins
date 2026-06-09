@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { COUNTRIES, flag, validateEmail, validatePhone } from './constants'
 import CountryCombobox from './CountryCombobox'
+import { confirmDialog } from './Dialog'
 
 function Section({ title, children }) {
   return (
@@ -180,7 +181,13 @@ function BankingTab({ company }) {
   }
 
   const remove = async (id) => {
-    if (!window.confirm('Remove this bank account?')) return
+    const ok = await confirmDialog({
+      title: 'Remove this bank account?',
+      body: 'It will no longer be shared with partner companies.',
+      confirmLabel: 'Remove',
+      tone: 'danger',
+    })
+    if (!ok) return
     await supabase.from('company_bank_accounts').delete().eq('id', id)
     setAccounts(p => p.filter(a => a.id !== id))
   }
@@ -270,7 +277,12 @@ function ContactsTab({ company }) {
   }
 
   const remove = async (id) => {
-    if (!window.confirm('Remove this contact?')) return
+    const ok = await confirmDialog({
+      title: 'Remove this contact?',
+      confirmLabel: 'Remove',
+      tone: 'danger',
+    })
+    if (!ok) return
     await supabase.from('company_contacts').delete().eq('id', id)
     setContacts(p => p.filter(c => c.id !== id))
   }

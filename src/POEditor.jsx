@@ -12,6 +12,7 @@ import { CSS as DndCSS } from '@dnd-kit/utilities'
 import { supabase } from './supabase'
 import { SaveTemplateModal, LoadTemplateModal, templateItemsToPOPayloads } from './Templates'
 import LineDrawer from './LineDrawer'
+import { confirmDialog } from './Dialog'
 
 const STATUSES = [
   { key: 'pending',      label: 'Pending',     cls: 'status-pending' },
@@ -474,11 +475,15 @@ function GrowerBlock({ block, blockIndex, growers, products, showState, locked, 
     onUpdate({ ...block, boxes })
   }
 
-  const deleteGrower = () => {
+  const deleteGrower = async () => {
     const name = block.growerName || 'this grower'
-    if (window.confirm(`Remove ${name} and all their boxes from this shipment? This cannot be undone.`)) {
-      onDelete(block.growerId)
-    }
+    const ok = await confirmDialog({
+      title: `Remove ${name}?`,
+      body: 'All their boxes and lines on this shipment will be removed. This cannot be undone.',
+      confirmLabel: 'Remove',
+      tone: 'danger',
+    })
+    if (ok) onDelete(block.growerId)
   }
 
   const handleKeyDown = (e, rowId, field) => {
@@ -864,12 +869,7 @@ export default function POEditor({ shipmentId, companyId, status, growers, produ
 
       <div className="po-editor">
         <div className="po-editor-toolbar">
-          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-1)', flex: 1 }}>
-            Purchase Order List
-            <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-3)', fontWeight: 400 }}>
-              {blocks.length} growers · {allRows.length} lines
-            </span>
-          </span>
+          <span style={{ flex: 1 }} />
           {saved && <span style={{ fontSize: 12, color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 5 }}><i className="ti ti-check" />Saved</span>}
           {saving && <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Saving…</span>}
           {tplMsg && <span style={{ fontSize: 12, color: 'var(--brown)' }}>{tplMsg}</span>}

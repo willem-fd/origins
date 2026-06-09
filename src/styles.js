@@ -232,6 +232,43 @@ export const CSS = `
     position: sticky; bottom: 0; background: var(--surface);
   }
 
+  /* DIALOG — the Origins-native overlay. Use for every confirm /
+     alert / prompt / small form. Heavier-weight modals stay on .modal. */
+  .dialog-overlay {
+    position: fixed; inset: 0; background: rgba(28,37,35,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 300; padding: 20px;
+    animation: fade-in 0.14s ease;
+  }
+  .dialog {
+    background: var(--surface); border-radius: var(--radius);
+    border: 0.5px solid var(--border); width: 100%; max-width: 440px;
+    box-shadow: 0 24px 80px rgba(28,37,35,0.22);
+    display: flex; flex-direction: column;
+    animation: dialog-pop 0.18s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .dialog-header {
+    display: flex; align-items: center; padding: 16px 20px 12px;
+    border-bottom: 0.5px solid var(--border); gap: 10px;
+  }
+  .dialog-title { font-size: 14px; font-weight: 600; color: var(--text-1); flex: 1; }
+  .dialog-body  { padding: 16px 20px; font-size: 13px; color: var(--text-2); line-height: 1.5; }
+  .dialog-body:not(:first-of-type) { padding-top: 0; }
+  .dialog-footer {
+    padding: 12px 20px 16px; display: flex; justify-content: flex-end; gap: 8px;
+  }
+  .dialog-textarea {
+    width: 100%; min-height: 72px; padding: 10px 12px;
+    border: 0.5px solid var(--border-md); border-radius: var(--radius-sm);
+    font-family: var(--font); font-size: 13px; color: var(--text-1);
+    background: var(--surface); resize: vertical; box-sizing: border-box;
+  }
+  .dialog-textarea:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 2px rgba(33,68,55,0.12); }
+  @keyframes dialog-pop {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
   /* TOTALS BAR */
   .totals-bar {
     background: var(--green-deep); border-radius: var(--radius);
@@ -529,8 +566,12 @@ export const CSS = `
      visible) but BELOW the drawer (so the right portion of the row is
      hidden where the drawer covers it). */
   .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.18); z-index: 80; animation: fade-in 0.18s ease; }
+  .drawer-backdrop.closing { animation: fade-out 0.22s ease forwards; }
   .drawer { position: fixed; top: 0; right: 0; width: 480px; max-width: 92vw; height: 100vh; background: var(--surface); box-shadow: -4px 0 24px rgba(0,0,0,0.12); overflow-y: auto; animation: drawer-in 0.25s cubic-bezier(0.22, 0.61, 0.36, 1); display: flex; flex-direction: column; z-index: 100; }
-  @keyframes drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  .drawer.closing { animation: drawer-out 0.22s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards; }
+  @keyframes drawer-in  { from { transform: translateX(100%); } to   { transform: translateX(0); } }
+  @keyframes drawer-out { from { transform: translateX(0); }    to   { transform: translateX(100%); } }
+  @keyframes fade-out   { from { opacity: 1; } to { opacity: 0; } }
   @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
   /* Drawer-active row: brass/gold ring + glow around the chosen line,
@@ -561,8 +602,30 @@ export const CSS = `
   .thread-item-time { font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-top: 1px; }
   .thread-item-fields { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-2); font-family: var(--mono); }
   .thread-item-fields strong { color: var(--text-1); font-weight: 600; }
-  .counter-form { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-  .counter-form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.4px; }
-  .counter-form input { padding: 8px 10px; font-size: 13px; font-family: var(--mono); border: 0.5px solid var(--border-md); border-radius: 6px; background: var(--surface); outline: none; }
-  .counter-form input:focus { border-color: var(--green); }
+  .counter-form { display: grid; grid-template-columns: repeat(12, 1fr); gap: 10px; }
+  .counter-form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.4px; min-width: 0; }
+  .counter-form input, .counter-form select { padding: 8px 10px; font-size: 13px; font-family: var(--mono); border: 0.5px solid var(--border-md); border-radius: 6px; background: var(--surface); outline: none; width: 100%; box-sizing: border-box; }
+  .counter-form input:focus, .counter-form select:focus { border-color: var(--green); }
+  .counter-form .col-type     { grid-column: span 3; }
+  .counter-form .col-variety  { grid-column: span 9; }
+  .counter-form .col-length   { grid-column: span 3; }
+  .counter-form .col-stems    { grid-column: span 3; }
+  .counter-form .col-stpb     { grid-column: span 3; }
+  .counter-form .col-price    { grid-column: span 3; }
+
+  /* Highlight changed values in a counter offer vs the prior ask/counter */
+  .thread-item-fields .changed { color: #B4892A; font-weight: 700; }
+
+  /* Order-type help icon + popover (inline next to the kv-label) */
+  .ot-help-wrap { position: relative; display: inline-flex; }
+  .ot-help-btn { background: transparent; border: none; color: var(--text-3); cursor: pointer; padding: 0 0 0 4px; font-size: 12px; line-height: 1; display: inline-flex; align-items: center; }
+  .ot-help-btn:hover { color: var(--text-1); }
+  .ot-help-popover { position: absolute; top: calc(100% + 6px); left: -8px; width: 280px; background: var(--surface); border: 0.5px solid var(--border-md); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); padding: 12px 14px; z-index: 110; font-size: 12.5px; line-height: 1.5; color: var(--text-2); text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .ot-help-popover p { margin: 0 0 6px 0; }
+  .ot-help-popover p:last-child { margin-bottom: 0; }
+  .ot-help-popover strong { color: var(--text-1); }
+
+  /* Cancel reason shown under a Cancelled thread item */
+  .thread-item-reason { margin-top: 6px; padding: 6px 8px; background: var(--surface); border-radius: 5px; border: 0.5px solid var(--border); font-size: 12px; color: var(--text-2); font-family: var(--font); }
+  .thread-item-reason-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-3); margin-bottom: 2px; font-weight: 600; }
 `

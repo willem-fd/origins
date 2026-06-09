@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { flag, STATUS_LABELS, STATUS_BADGE } from './constants'
 import LineDrawer from './LineDrawer'
+import { promptDialog } from './Dialog'
 
 // Badge label + style for the grower's view.
 //   pending, grower (= viewer) was last actor → "Awaiting reply"  (gray)
@@ -217,6 +218,31 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
     refresh()
   }
 
+  // Grower cancel prompts for an optional reason (shown in the buyer's line history)
+  const cancelLine = async (poId) => {
+    const res = await promptDialog({
+      title: 'Reason for cancellation?',
+      body: 'Optional — the buyer will see this note in the line history. Leave blank if you just want to cancel.',
+      placeholder: 'e.g. out of stock until next week',
+      submitLabel: 'Cancel with reason',
+      dismissLabel: 'No reason, just cancel',
+    })
+    if (res === null) return  // user closed the dialog
+    setBusy(poId); setErr('')
+    const { data, error } = await supabase.rpc('po_cancel', { p_po_id: poId, p_reason: (res || '').trim() || null })
+    setBusy(null)
+    if (error || !data?.ok) {
+      const code = data?.error || error?.message || 'Action failed'
+      setErr({
+        not_authorized: 'You are not authorised to do that.',
+        already_cancelled: 'This line is already cancelled.',
+        shipment_not_active: 'Shipment is not in an active state.',
+      }[code] || code)
+      return
+    }
+    refresh()
+  }
+
   if (!shipment) {
     return <div className="empty"><i className="ti ti-loader" /><div className="empty-title">Loading…</div></div>
   }
@@ -381,7 +407,7 @@ function GrowerShipmentDetail({ shipmentId, companyId, profile, onBack }) {
                               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                                 {isAdmin && l.state === 'pending' && (
                                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                    <button className="btn btn-ghost btn-sm" disabled={busy === l.id} onClick={() => act(l.id, 'po_cancel')}>
+                                    <button className="btn btn-ghost btn-sm" disabled={busy === l.id} onClick={() => cancelLine(l.id)}>
                                       <i className="ti ti-x" aria-hidden="true" /> Cancel
                                     </button>
                                     <button className="btn btn-ghost btn-sm" disabled={busy === l.id} onClick={() => { setCounterInitFor(l.id); setOpenHistoryFor(l.id) }} title="Open the line history drawer with the counter form ready">

@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import { flag, COUNTRIES } from './constants'
 import CompanyProfile from './CompanyProfile'
 import CountryCombobox from './CountryCombobox'
+import { alertDialog } from './Dialog'
 
 const TYPE_LABELS = { buyer: 'Buyer', grower: 'Grower', logistics: 'Logistics' }
 const TYPE_COLORS = { buyer: 'var(--green)', grower: 'var(--brown)', logistics: '#2563EB' }
@@ -52,7 +53,7 @@ export default function CompaniesPage({ initialType = 'all', viewAsBuyerId = nul
     if (!f.name) return
     setSaving(true)
     const { data, error } = await supabase.from('companies').insert([f]).select().single()
-    if (error) { setSaving(false); alert(error.message); return }
+    if (error) { setSaving(false); alertDialog({ title: 'Could not save', body: error.message }); return }
     // When viewing-as a buyer, auto-link the new grower/logistics to that buyer's list
     if (viewAsBuyerId && (data.type === 'grower' || data.type === 'logistics')) {
       await supabase.from('company_relationships').insert([{
