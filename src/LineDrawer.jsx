@@ -365,12 +365,6 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
         ) : line ? (
           <>
             <div className="drawer-section">
-              <div className="drawer-section-title">Current</div>
-              {storyMsg && (
-                <div style={{ background: storyBg, color: storyColor, padding: '8px 12px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, marginBottom: 12 }}>
-                  {storyMsg}
-                </div>
-              )}
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>
                 {line.products?.name || '—'}
               </div>
@@ -414,6 +408,12 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
                 </div>
               )}
             </div>
+
+            {storyMsg && (
+              <div style={{ background: storyBg, color: storyColor, padding: '10px 14px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, margin: '8px 16px' }}>
+                {storyMsg}
+              </div>
+            )}
 
             {/* Actions */}
             {(canConfirm || canCounter || canCancel || canReopen) && (
