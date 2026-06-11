@@ -566,11 +566,6 @@ function ThreadItem({ action, who, prior, productLabel }) {
   const priorF = prior?.fields_json || {}
   const changed = (key) => isCounter && priorF[key] != null && f[key] != null && String(f[key]) !== String(priorF[key])
 
-  const hasPrice    = f.price_ordered != null
-  const hasOrderType = f.order_type != null
-  const hasProductId = f.product_id != null
-  const hasLength    = f.length_cm != null
-
   // Reason for cancellation, if present
   const reason = f.reason
 
@@ -586,22 +581,12 @@ function ThreadItem({ action, who, prior, productLabel }) {
         </div>
         {showValues && (
           <div className="thread-item-fields">
-            <span>Price <strong className={changed('price_ordered') ? 'changed' : ''} style={{ color: hasPrice ? undefined : 'var(--text-3)' }}>{hasPrice ? fmtPrice(f.price_ordered) : 'not set'}</strong></span>
-            {f.stems_ordered != null && (
-              <span>· Stems <strong className={changed('stems_ordered') ? 'changed' : ''}>{fmtInt(f.stems_ordered)}</strong></span>
-            )}
-            {f.stems_per_bunch != null && (
-              <span>· St/B <strong className={changed('stems_per_bunch') ? 'changed' : ''}>{fmtInt(f.stems_per_bunch)}</strong></span>
-            )}
-            {hasLength && (
-              <span>· Len <strong className={changed('length_cm') ? 'changed' : ''}>{f.length_cm} cm</strong></span>
-            )}
-            {hasOrderType && (
-              <span>· Type <strong className={changed('order_type') ? 'changed' : ''}>{({ open_market: 'OM', repeating: 'RO', standing: 'SO' })[f.order_type] || f.order_type}</strong></span>
-            )}
-            {hasProductId && (
-              <span>· Variety <strong className={changed('product_id') ? 'changed' : ''}>{productLabel(f.product_id)}</strong></span>
-            )}
+            <span>Type <strong className={changed('order_type') ? 'changed' : ''}>{f.order_type ? ({ open_market: 'OM', repeating: 'RO', standing: 'SO' })[f.order_type] || f.order_type : '—'}</strong></span>
+            <span>· Variety <strong className={changed('product_id') ? 'changed' : ''}>{productLabel(f.product_id) || '—'}</strong></span>
+            <span>· Len <strong className={changed('length_cm') ? 'changed' : ''}>{f.length_cm != null ? `${f.length_cm} cm` : '—'}</strong></span>
+            <span>· Stems <strong className={changed('stems_ordered') ? 'changed' : ''}>{f.stems_ordered != null ? fmtInt(f.stems_ordered) : '—'}</strong></span>
+            <span>· St/B <strong className={changed('stems_per_bunch') ? 'changed' : ''}>{f.stems_per_bunch != null ? fmtInt(f.stems_per_bunch) : '—'}</strong></span>
+            <span>· Price <strong className={changed('price_ordered') ? 'changed' : ''}>{f.price_ordered != null ? fmtPrice(f.price_ordered) : '—'}</strong></span>
           </div>
         )}
         {isCancel && reason && (
