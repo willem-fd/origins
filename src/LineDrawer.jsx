@@ -376,7 +376,6 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, fontFamily: 'var(--mono)' }}>
                 Box {line.box_nr ?? '—'} · {line.box_type || '—'} · MARK {line.boxmark || '—'}
-                <span style={{ marginLeft: 10 }}>· grower {companyName(line.grower_company_id)}</span>
               </div>
               <div className="kv-grid">
                 <KV label="Length"   value={line.length_cm == null ? '—' : `${line.length_cm} cm`} />
