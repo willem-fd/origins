@@ -574,21 +574,22 @@ function ThreadItem({ action, who, prior, productLabel }) {
       { key: 'price_ordered', label: 'Price', format: (v) => v != null ? fmtPrice(v) : null },
     ]
     
-    // For counter: show only fields that have values AND changed from prior
+    // For counter: show ONLY fields where changed() is true
     // For confirm: show all fields with values
     let fieldsToShow = fields.filter(field => {
+      if (onlyChanged) {
+        return changed(field.key) // Only show if actually changed
+      }
+      // For confirm, show all with values
       const val = field.format(f[field.key])
-      if (!val) return false // Skip if no value
-      if (onlyChanged) return changed(field.key) || (priorF[field.key] == null && f[field.key] != null) // Show if changed or newly added
-      return true // For confirm, show all with values
+      return val != null
     })
     
     return fieldsToShow.map((field, i) => {
-      const isChanged = changed(field.key) || (priorF[field.key] == null && f[field.key] != null)
       return (
         <span key={field.key}>
           {i > 0 ? ' · ' : ''}
-          {field.label} <strong className={isChanged ? 'changed' : ''}>{field.format(f[field.key])}</strong>
+          {field.label} <strong className={changed(field.key) ? 'changed' : ''}>{field.format(f[field.key])}</strong>
         </span>
       )
     })
