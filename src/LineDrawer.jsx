@@ -566,7 +566,7 @@ function ThreadItem({ action, who, prior, productLabel }) {
   const changed = (key) => isCounter && priorF[key] != null && f[key] != null && String(f[key]) !== String(priorF[key])
   const reason = f.reason
 
-  const renderFields = () => {
+  const renderFields = (onlyChanged = false) => {
     const fields = [
       { key: 'order_type', label: 'Type', format: (v) => v ? ({ open_market: 'OM', repeating: 'RO', standing: 'SO' })[v] || v : '—' },
       { key: 'product_id', label: 'Variety', format: (v) => productLabel(v) || '—' },
@@ -576,7 +576,9 @@ function ThreadItem({ action, who, prior, productLabel }) {
       { key: 'price_ordered', label: 'Price', format: (v) => v != null ? fmtPrice(v) : '—' },
     ]
     
-    return fields.map((field, i) => (
+    const fieldsToShow = onlyChanged ? fields.filter(f => changed(f.key)) : fields
+    
+    return fieldsToShow.map((field, i) => (
       <span key={field.key}>
         {i > 0 ? ' · ' : ''}
         {field.label} <strong className={changed(field.key) ? 'changed' : ''}>{field.format(f[field.key])}</strong>
@@ -607,7 +609,7 @@ function ThreadItem({ action, who, prior, productLabel }) {
               {who} countered with the following changes
             </div>
             <div className="thread-item-fields">
-              {renderFields()}
+              {renderFields(true)}
             </div>
           </>
         )}
