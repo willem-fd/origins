@@ -585,12 +585,15 @@ function ThreadItem({ action, who, prior, productLabel }) {
       return true // For confirm, show all with values
     })
     
-    return fieldsToShow.map((field, i) => (
-      <span key={field.key}>
-        {i > 0 ? ' · ' : ''}
-        {field.label} <strong className={changed(field.key) ? 'changed' : ''}>{field.format(f[field.key])}</strong>
-      </span>
-    ))
+    return fieldsToShow.map((field, i) => {
+      const isChanged = changed(field.key) || (priorF[field.key] == null && f[field.key] != null)
+      return (
+        <span key={field.key}>
+          {i > 0 ? ' · ' : ''}
+          {field.label} <strong className={isChanged ? 'changed' : ''}>{field.format(f[field.key])}</strong>
+        </span>
+      )
+    })
   }
 
   return (
