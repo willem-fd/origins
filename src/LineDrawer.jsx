@@ -373,7 +373,6 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
               )}
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>
                 {line.products?.name || '—'}
-                {line.products?.vbn_code && <span style={{ marginLeft: 6, color: 'var(--text-3)', fontSize: 12 }}>{line.products.vbn_code}</span>}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, fontFamily: 'var(--mono)' }}>
                 Box {line.box_nr ?? '—'} · {line.box_type || '—'} · MARK {line.boxmark || '—'}
@@ -440,7 +439,7 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
                           onChange={e => setCounterForm({ ...counterForm, product_id: e.target.value })}>
                           <option value="">— pick a variety —</option>
                           {growerProducts.map(p => (
-                            <option key={p.id} value={p.id}>{p.name}{p.vbn_code ? ` (${p.vbn_code})` : ''}</option>
+                            <option key={p.id} value={p.id}>{p.name}</option>
                           ))}
                         </select>
                       </label>
@@ -604,7 +603,6 @@ function ThreadItem({ action, who, prior, productLabel }) {
       <div className="thread-item-body">
         <div className="thread-item-head">
           <span style={{ fontWeight: 600, color: ACTION_COLOR[action.action] }}>{ACTION_LABEL[action.action] || action.action}</span>
-          <span style={{ color: 'var(--text-3)', fontSize: 11.5 }}>· {who}</span>
         </div>
         
         {isAsk && (
