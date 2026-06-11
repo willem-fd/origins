@@ -568,15 +568,22 @@ function ThreadItem({ action, who, prior, productLabel }) {
 
   const renderFields = (onlyChanged = false) => {
     const fields = [
-      { key: 'order_type', label: 'Type', format: (v) => v ? ({ open_market: 'OM', repeating: 'RO', standing: 'SO' })[v] || v : '—' },
-      { key: 'product_id', label: 'Variety', format: (v) => productLabel(v) || '—' },
-      { key: 'length_cm', label: 'Len', format: (v) => v != null ? `${v} cm` : '—' },
-      { key: 'stems_ordered', label: 'Stems', format: (v) => v != null ? fmtInt(v) : '—' },
-      { key: 'stems_per_bunch', label: 'St/B', format: (v) => v != null ? fmtInt(v) : '—' },
-      { key: 'price_ordered', label: 'Price', format: (v) => v != null ? fmtPrice(v) : '—' },
+      { key: 'order_type', label: 'Type', format: (v) => v ? ({ open_market: 'OM', repeating: 'RO', standing: 'SO' })[v] || v : null },
+      { key: 'product_id', label: 'Variety', format: (v) => productLabel(v) || null },
+      { key: 'length_cm', label: 'Len', format: (v) => v != null ? `${v} cm` : null },
+      { key: 'stems_ordered', label: 'Stems', format: (v) => v != null ? fmtInt(v) : null },
+      { key: 'stems_per_bunch', label: 'St/B', format: (v) => v != null ? fmtInt(v) : null },
+      { key: 'price_ordered', label: 'Price', format: (v) => v != null ? fmtPrice(v) : null },
     ]
     
-    const fieldsToShow = onlyChanged ? fields.filter(f => changed(f.key)) : fields
+    // For counter: show only fields that have values AND changed from prior
+    // For confirm: show all fields with values
+    let fieldsToShow = fields.filter(field => {
+      const val = field.format(f[field.key])
+      if (!val) return false // Skip if no value
+      if (onlyChanged) return changed(field.key) || (priorF[field.key] == null && f[field.key] != null) // Show if changed or newly added
+      return true // For confirm, show all with values
+    })
     
     return fieldsToShow.map((field, i) => (
       <span key={field.key}>
