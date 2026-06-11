@@ -217,7 +217,7 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
     if (!id) return '—'
     const p = productMap[id]
     if (!p) return '—'
-    return `${p.name}${p.vbn_code ? ` (${p.vbn_code})` : ''}`
+    return p.name
   }
 
   const beginCounter = () => {
@@ -353,7 +353,6 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
       <div className={`drawer-backdrop${closing ? ' closing' : ''}`} onClick={requestClose} />
       <div className={`drawer${closing ? ' closing' : ''}`} role="dialog" aria-label="Line history">
         <div className="drawer-header">
-          <div className="drawer-title">Line history</div>
           <button className="btn btn-ghost btn-sm" onClick={requestClose} aria-label="Close">
             <i className="ti ti-x" aria-hidden="true" />
           </button>
@@ -489,7 +488,7 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
                 ) : (
                   <>
                     <div className="drawer-section-title">Actions</div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', background: '#f5ede0', padding: '12px 14px', borderRadius: 6, margin: '8px 0' }}>
                       {canConfirm && (
                         <button className="btn btn-primary btn-sm" onClick={() => runRpc('po_confirm')} disabled={submitting}>
                           <i className="ti ti-check" aria-hidden="true" /> Confirm
@@ -558,16 +557,32 @@ function KV({ label, value, children, labelExtra }) {
 
 function ThreadItem({ action, who, prior, productLabel }) {
   const f = action.fields_json || {}
-  const isCounter = action.action === 'counter'
-  const isCancel  = action.action === 'cancel'
-  const isReopen  = action.action === 'reopen'
-  const showValues = !isCancel && !isReopen
-
   const priorF = prior?.fields_json || {}
+  const isCounter = action.action === 'counter'
+  const isConfirm = action.action === 'confirm'
+  const isCancel  = action.action === 'cancel'
+  const isAsk     = action.action === 'ask'
+  
   const changed = (key) => isCounter && priorF[key] != null && f[key] != null && String(f[key]) !== String(priorF[key])
-
-  // Reason for cancellation, if present
   const reason = f.reason
+
+  const renderFields = () => {
+    const fields = [
+      { key: 'order_type', label: 'Type', format: (v) => v ? ({ open_market: 'OM', repeating: 'RO', standing: 'SO' })[v] || v : '—' },
+      { key: 'product_id', label: 'Variety', format: (v) => productLabel(v) || '—' },
+      { key: 'length_cm', label: 'Len', format: (v) => v != null ? `${v} cm` : '—' },
+      { key: 'stems_ordered', label: 'Stems', format: (v) => v != null ? fmtInt(v) : '—' },
+      { key: 'stems_per_bunch', label: 'St/B', format: (v) => v != null ? fmtInt(v) : '—' },
+      { key: 'price_ordered', label: 'Price', format: (v) => v != null ? fmtPrice(v) : '—' },
+    ]
+    
+    return fields.map((field, i) => (
+      <span key={field.key}>
+        {i > 0 ? ' · ' : ''}
+        {field.label} <strong className={changed(field.key) ? 'changed' : ''}>{field.format(f[field.key])}</strong>
+      </span>
+    ))
+  }
 
   return (
     <div className="thread-item">
@@ -579,22 +594,48 @@ function ThreadItem({ action, who, prior, productLabel }) {
           <span style={{ fontWeight: 600, color: ACTION_COLOR[action.action] }}>{ACTION_LABEL[action.action] || action.action}</span>
           <span style={{ color: 'var(--text-3)', fontSize: 11.5 }}>· {who}</span>
         </div>
-        {showValues && (
-          <div className="thread-item-fields">
-            <span>Type <strong className={changed('order_type') ? 'changed' : ''}>{f.order_type ? ({ open_market: 'OM', repeating: 'RO', standing: 'SO' })[f.order_type] || f.order_type : '—'}</strong></span>
-            <span>· Variety <strong className={changed('product_id') ? 'changed' : ''}>{productLabel(f.product_id) || '—'}</strong></span>
-            <span>· Len <strong className={changed('length_cm') ? 'changed' : ''}>{f.length_cm != null ? `${f.length_cm} cm` : '—'}</strong></span>
-            <span>· Stems <strong className={changed('stems_ordered') ? 'changed' : ''}>{f.stems_ordered != null ? fmtInt(f.stems_ordered) : '—'}</strong></span>
-            <span>· St/B <strong className={changed('stems_per_bunch') ? 'changed' : ''}>{f.stems_per_bunch != null ? fmtInt(f.stems_per_bunch) : '—'}</strong></span>
-            <span>· Price <strong className={changed('price_ordered') ? 'changed' : ''}>{f.price_ordered != null ? fmtPrice(f.price_ordered) : '—'}</strong></span>
+        
+        {isAsk && (
+          <div style={{ color: 'var(--text-2)', fontSize: 13.5, marginTop: 4 }}>
+            {who} created this order line
           </div>
         )}
+        
+        {isCounter && (
+          <>
+            <div style={{ color: 'var(--text-2)', fontSize: 13.5, marginTop: 4, marginBottom: 6 }}>
+              {who} countered with the following changes
+            </div>
+            <div className="thread-item-fields">
+              {renderFields()}
+            </div>
+          </>
+        )}
+        
+        {isConfirm && (
+          <>
+            <div style={{ color: 'var(--text-2)', fontSize: 13.5, marginTop: 4, marginBottom: 6 }}>
+              {who} confirmed this order line
+            </div>
+            <div className="thread-item-fields">
+              {renderFields()}
+            </div>
+          </>
+        )}
+        
+        {isCancel && (
+          <div style={{ color: 'var(--text-2)', fontSize: 13.5, marginTop: 4 }}>
+            {who} cancelled this line
+          </div>
+        )}
+        
         {isCancel && reason && (
-          <div className="thread-item-reason">
+          <div className="thread-item-reason" style={{ marginTop: 8 }}>
             <div className="thread-item-reason-label">Reason</div>
             {reason}
           </div>
         )}
+        
         <div className="thread-item-time">{fmtDate(action.created_at)}</div>
       </div>
     </div>
