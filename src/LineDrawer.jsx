@@ -419,7 +419,7 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
 
             {/* Actions */}
             {(canConfirm || canCounter || canCancel || canReopen) && (
-              <div className="drawer-section" style={{ background: '#f5ede0' }}>
+              <div className="drawer-section" style={{ backgroundColor: '#f5ede0' }}>
                 {counterMode ? (
                   <>
                     <div className="drawer-section-title">Your counter offer</div>
