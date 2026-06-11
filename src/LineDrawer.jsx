@@ -419,7 +419,7 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
 
             {/* Actions */}
             {(canConfirm || canCounter || canCancel || canReopen) && (
-              <div className="drawer-section" style={{ background: 'var(--surface-2)' }}>
+              <div className="drawer-section" style={{ background: '#f5ede0' }}>
                 {counterMode ? (
                   <>
                     <div className="drawer-section-title">Your counter offer</div>
@@ -488,7 +488,7 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
                 ) : (
                   <>
                     <div className="drawer-section-title">Actions</div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', background: '#f5ede0', padding: '12px 14px', borderRadius: 6, margin: '8px 0' }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {canConfirm && (
                         <button className="btn btn-primary btn-sm" onClick={() => runRpc('po_confirm')} disabled={submitting}>
                           <i className="ti ti-check" aria-hidden="true" /> Confirm
