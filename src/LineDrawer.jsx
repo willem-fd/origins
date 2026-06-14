@@ -533,25 +533,25 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
                 ) : (
                   <>
                     <div className="drawer-section-title">Actions</div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%' }}>
                       {canConfirm && (
-                        <button className="btn btn-primary" onClick={() => runRpc('po_confirm')} disabled={submitting}>
+                        <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => runRpc('po_confirm')} disabled={submitting}>
                           <i className="ti ti-check" aria-hidden="true" /> Confirm
                         </button>
                       )}
                       {canCounter && (
-                        <button className="btn btn-ghost" onClick={beginCounter} disabled={submitting}>
+                        <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={beginCounter} disabled={submitting}>
                           <i className="ti ti-arrows-exchange" aria-hidden="true" /> Counter
                         </button>
                       )}
-                      {canCancel && (
-                        <button className="btn btn-danger btn-sm" onClick={handleCancel} disabled={submitting}>
-                          <i className="ti ti-x" aria-hidden="true" /> Cancel
+                      {canReopen && (
+                        <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={handleReopen} disabled={submitting}>
+                          <i className="ti ti-rotate-clockwise" aria-hidden="true" /> Reopen
                         </button>
                       )}
-                      {canReopen && (
-                        <button className="btn btn-ghost btn-sm" onClick={handleReopen} disabled={submitting}>
-                          <i className="ti ti-rotate-clockwise" aria-hidden="true" /> Reopen
+                      {canCancel && (
+                        <button className="btn btn-danger" onClick={handleCancel} disabled={submitting}>
+                          <i className="ti ti-x" aria-hidden="true" /> Cancel
                         </button>
                       )}
                     </div>
@@ -601,8 +601,8 @@ function ThreadItem({ action, who, prior, productLabel }) {
 
   const renderFields = (onlyChanged = false) => {
     const fields = [
-      { key: 'order_type', label: 'Type', format: (v) => v ? ({ open_market: 'OM', repeating: 'RO', standing: 'SO' })[v] || v : null },
       { key: 'product_id', label: 'Variety', format: (v) => productLabel(v) || null },
+      { key: 'order_type', label: 'Type', format: (v) => v ? ({ open_market: 'OM', repeating: 'RO', standing: 'SO' })[v] || v : null },
       { key: 'length_cm', label: 'Len', format: (v) => v != null ? `${v} cm` : null },
       { key: 'stems_ordered', label: 'Stems', format: (v) => v != null ? fmtInt(v) : null },
       { key: 'stems_per_bunch', label: 'St/B', format: (v) => v != null ? fmtInt(v) : null },
