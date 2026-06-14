@@ -312,27 +312,31 @@ Batch B (2026-06-12) — three UI fixes pushed:
 Removed company name from line details box
 Moved status banner to between buyer note and actions
 Fixed renderFields filter to show ONLY changed fields in counter thread items (not all 6)
-3.2 Pending work — start here when resuming
-1. SQL migration to paste in Supabase. A critical bug was found in po_counter on 2026-06-12: it was saving ALL 6 fields to po_actions unconditionally, which broke the changed() filter used by the brass-diff highlight in the thread. The fix uses jsonb_strip_nulls + a CASE per field, so only fields that actually changed get recorded.
+Session — 2026-06-14 (moved from Projects to Claude Code; Supabase MCP connected)
 
-The current SQL file in the repo is migrations/w3_rpc_widen_and_reason_fixed.sql (the corrected version).
-First action on resume: verify what's in migrations/ and paste the latest version into the Supabase SQL editor. None of the Phase 2 flows work correctly until this runs.
+Environment / tooling.
+- Repo cloned into the local working folder; CLAUDE.md and DESIGN.md committed and pushed.
+- GitHub auth: a personal access token is stored in the macOS keychain only (never in the repo). NOTE: a PAT was pasted into chat this session — recommend revoking + rotating it when convenient.
+- Supabase MCP server connected at user scope (~/.claude.json), project zzpxcjmvyimwziqljlmb, read+write. Claude Code now applies migrations directly with Willem approving each query — no more manual SQL paste. The Supabase access token also lives only in ~/.claude.json.
+- DESIGN.md added: the site-wide design system (colors, type, spacing, buttons, forms, badges, the three overlays Dialog/Modal/Drawer, the PO line drawer pattern, auth, icons). READ IT before any UI work. Brand = forest green + brass on warm cream; fonts DM Sans / DM Mono.
 
-2. Test sequence to walk after the SQL paste. Use the test fixtures (tbuyer@origins.test, tgrower@origins.test, password TestOrigins!2026):
+The stale "paste w3_rpc_widen_and_reason_fixed.sql" item is RETIRED — do not apply it. That file never existed in the repo, and the only-changed-fields SQL it described would BREAK the shipped frontend, which diffs each action against the prior one and therefore needs every action to carry a full snapshot. The brass-diff was already solved in the frontend (commit 84376a6).
 
-a. Grower confirms a pending line → drawer closes. b. Grower opens drawer on another line, clicks Counter → form shows Type/Variety/Length/Stems/St/B/Price all editable. c. Submits counter → drawer closes; refresh shows the badge as "Reply required" on buyer side. d. Buyer side opens that line, clicks Confirm in drawer → succeeds (no "not authorised"), drawer closes. e. Grower clicks Cancel on any line → Origins-styled reason prompt appears; after submit, thread shows the reason. f. Reopen a line → Origins-styled confirm appears. g. Header bar: no "Purchase Order List · X growers · X lines" anymore. h. Order Type label in drawer has a ? icon — click reveals OM/RO/SO definitions. i. Watch drawer close — slides back to the right (mirror of slide-in). j. In thread, a counter offer that changed e.g. Price + Variety should show only those two values in brass (the renderFields filter fix).
+Negotiation drawer rework — SHIPPED & LIVE.
+- Data fix (migrations/w3_ask_all_six_fields.sql, applied): every 'ask' action now stores all 6 negotiable fields. This was the root cause of "length didn't highlight" — the opening ask had no length to diff against. on_shipment_activate, on_po_buyer_insert, on_po_buyer_update all fixed. FORWARD-ONLY: 'ask' rows created before this date lack length/order_type/product_id, so legacy lines won't show those as changed — test on fresh lines.
+- Drawer redesign (src/LineDrawer.jsx + src/styles.js, deployed): re-ranked to Identity (variety + box, state badge in header) → whose-move banner → "Current order" grid (the 6 terms; the latest action's changes tinted brass with "· was X" inline) → Actions → History (always expanded, newest first). Variety spans the full grid width. Buttons fill the action row: Confirm/Counter/Reopen flex to fill, Cancel compact at the end, all same height. History bubble field order mirrors the grid (Variety, Type, Length, Stems, St/B, Price).
+- Re-counter fix (migrations/w3_recounter_fix.sql, applied): buyer countering a counter crashed with "tuple to be updated was already modified...". Cause: po_counter's UPDATE fired the buyer-edit ask trigger (caller == buyer), whose insert fired the last-action denorm trigger, which re-updated the same row mid-command. Fix: po_counter now sets a transaction-local flag origins.skip_buyer_edit around its UPDATE and on_po_buyer_update returns early when set. Buyer↔grower can now counter indefinitely.
+- Verified live: po_confirm / po_counter / po_cancel all store all 6 fields; po_counter is guarded against the buyer-edit trigger. Willem confirmed the flow works end-to-end on the live site.
 
-3. Deferred polish (queued, not blocking).
-
-Connection-request-approval flow (W2 Steps 3–4) works but Willem wants to refine the UX later. Specifics not enumerated; revisit after macro progress on W3+ and ask Willem what felt off.
-Resend SMTP for branded transactional emails on letsgoorigins.com — pending the domain move.
-3.3 Wave 3 Phase 3 and beyond
-Once the Phase 2 test sequence passes:
-
-W3 Phase 3: Post-go-live edit sync (the explicit batched "Send updates to growers" action), negotiation thread polish, grower invoice upload.
+Deferred / known issues.
+- Pre-2026-06-14 'ask' rows lack length/order_type/product_id (forward-only fix above). Cosmetic only, legacy lines.
+- Connection-request-approval UX (W2 Steps 3–4) works; Willem wants to refine later — ask him what felt off.
+- Resend SMTP for branded transactional emails on letsgoorigins.com — pending the domain move.
+3.3 Wave 3 Phase 3 and beyond (next up)
+W3 Phase 3: Post-go-live edit sync (the explicit batched "Send updates to growers" action), further negotiation polish, grower invoice upload.
 W4: Logistics portal — assigned shipments view, shipping document upload, AI extraction. The AI extraction uses the Claude API (Claude Platform). Setup of the API key + first PDF-to-structured-data prompt is the first task in this wave.
 3.4 Things to verify when Claude Code first opens the repo
-Check migrations/ folder — confirm which file is the latest (w3_rpc_widen_and_reason.sql from 2026-06-09 vs w3_rpc_widen_and_reason_fixed.sql from 2026-06-12). Use the fixed version.
+Confirm the Supabase MCP is connected (tools named mcp__supabase__*). If absent, reconnect via ~/.claude.json. Migrations are now applied directly via MCP (Willem approves each); the DB is the source of truth — verify live function bodies with pg_get_functiondef before editing, since the repo and DB have diverged in the past. APPLIED.md is stale.
 Run npm install if node_modules/ isn't present (optional for code reading; required to run npm start).
 Confirm Vercel auto-deployed the most recent main: visit origins-two.vercel.app and check it loads.
 
