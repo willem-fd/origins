@@ -243,8 +243,8 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
 
   // The 6 negotiable terms, in priority order, with formatters.
   const dealDef = [
+    { key: 'product_id',      label: 'Variety',  fmt: (v) => productLabel(v), wide: true },
     { key: 'order_type',      label: 'Type',     fmt: (v) => v ? (OT_SHORT[v] || v) : '—', help: true },
-    { key: 'product_id',      label: 'Variety',  fmt: (v) => productLabel(v) },
     { key: 'length_cm',       label: 'Length',   fmt: (v) => v != null ? `${v} cm` : '—' },
     { key: 'stems_ordered',   label: 'Stems',    fmt: (v) => fmtInt(v) },
     { key: 'stems_per_bunch', label: 'St/bunch', fmt: (v) => fmtInt(v) },
@@ -419,15 +419,15 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
               </div>
             )}
 
-            {/* On the table — the 6 negotiable terms as they currently stand */}
+            {/* Current order — the 6 negotiable terms as they currently stand */}
             <div className="drawer-section">
-              <div className="drawer-section-title">On the table</div>
+              <div className="drawer-section-title">Current order</div>
               <div className="deal-grid">
                 {dealDef.map(d => {
                   const cur = d.key === 'product_id' ? line.product_id : line[d.key]
                   const isChanged = Object.prototype.hasOwnProperty.call(changedWas, d.key)
                   return (
-                    <div key={d.key} className={`deal-cell${isChanged ? ' changed' : ''}`}>
+                    <div key={d.key} className={`deal-cell${isChanged ? ' changed' : ''}`} style={d.wide ? { gridColumn: '1 / -1' } : undefined}>
                       <div className="deal-label">
                         {d.label}
                         {d.help && (
@@ -533,14 +533,14 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
                 ) : (
                   <>
                     <div className="drawer-section-title">Actions</div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       {canConfirm && (
-                        <button className="btn btn-primary btn-sm" onClick={() => runRpc('po_confirm')} disabled={submitting}>
+                        <button className="btn btn-primary" onClick={() => runRpc('po_confirm')} disabled={submitting}>
                           <i className="ti ti-check" aria-hidden="true" /> Confirm
                         </button>
                       )}
                       {canCounter && (
-                        <button className="btn btn-ghost btn-sm" onClick={beginCounter} disabled={submitting}>
+                        <button className="btn btn-ghost" onClick={beginCounter} disabled={submitting}>
                           <i className="ti ti-arrows-exchange" aria-hidden="true" /> Counter
                         </button>
                       )}
@@ -561,7 +561,7 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
             )}
 
             <div className="drawer-section">
-              <div className="drawer-section-title">Thread <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>· newest first</span></div>
+              <div className="drawer-section-title">History <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>· newest first</span></div>
               {actions.length === 0 ? (
                 <div style={{ fontSize: 12.5, color: 'var(--text-3)' }}>No actions recorded yet.</div>
               ) : (
