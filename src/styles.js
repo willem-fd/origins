@@ -594,6 +594,18 @@ export const CSS = `
   .kv { }
   .kv-label { font-size: 10.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 2px; }
   .kv-value { font-size: 13px; font-family: var(--mono); color: var(--text-1); }
+
+  /* Drawer "on the table" grid — the 6 negotiable terms as the deal currently
+     stands. Terms the latest action changed are tinted brass with the prior
+     value shown inline ("· was X"), so the decision needs no thread reading. */
+  .deal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
+  .deal-cell { background: var(--surface-2); border-radius: var(--radius-sm); padding: 8px 10px; min-width: 0; }
+  .deal-cell.changed { background: var(--brown-pale); }
+  .deal-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-3); margin-bottom: 3px; display: inline-flex; align-items: center; }
+  .deal-cell.changed .deal-label { color: var(--brown-dark); }
+  .deal-value { font-size: 13px; font-family: var(--mono); color: var(--text-1); line-height: 1.35; overflow-wrap: anywhere; }
+  .deal-now { color: #B4892A; font-weight: 500; }
+  .deal-was { font-size: 10.5px; color: var(--text-3); }
   .thread { display: flex; flex-direction: column; gap: 14px; }
   .thread-item { display: flex; gap: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: 8px; border: 0.5px solid var(--border); }
   .thread-item-icon { width: 24px; height: 24px; border-radius: 12px; background: var(--surface); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; border: 0.5px solid var(--border); }

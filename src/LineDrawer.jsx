@@ -39,7 +39,7 @@ const FRIENDLY_ERR = {
 
 const STATE_LABEL = { pending: 'Pending', active: 'Confirmed', cancelled: 'Cancelled' }
 const STATE_BADGE = { pending: 'badge-pending', active: 'badge-active', cancelled: 'badge-cancelled' }
-const OT_LABEL    = { open_market: 'Open Market', standing: 'Standing', repeating: 'Repeating' }
+const OT_SHORT    = { open_market: 'OM', standing: 'SO', repeating: 'RO' }
 
 const CLOSE_MS = 220   // must match @keyframes drawer-out duration in styles.js
 
@@ -220,6 +220,37 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
     return p.name
   }
 
+  // What did the latest action change vs the one before it?
+  // Drives the brass "· was X" on the deal grid. Only counters and buyer-edit
+  // asks introduce changes; confirm/cancel/reopen leave the terms untouched.
+  const NEGOTIABLE_KEYS = ['order_type', 'product_id', 'length_cm', 'stems_ordered', 'stems_per_bunch', 'price_ordered']
+  const priorAction = (() => {
+    for (let j = 1; j < actions.length; j++) {
+      if (actions[j].action !== 'reopen') return actions[j]
+    }
+    return null
+  })()
+  const diffSource = actions[0]
+  const showDiff = diffSource && (diffSource.action === 'counter' || diffSource.action === 'ask') && priorAction
+  const changedWas = {}
+  if (showDiff) {
+    const lf = diffSource.fields_json || {}
+    const pf = priorAction.fields_json || {}
+    for (const key of NEGOTIABLE_KEYS) {
+      if (lf[key] != null && pf[key] != null && String(lf[key]) !== String(pf[key])) changedWas[key] = pf[key]
+    }
+  }
+
+  // The 6 negotiable terms, in priority order, with formatters.
+  const dealDef = [
+    { key: 'order_type',      label: 'Type',     fmt: (v) => v ? (OT_SHORT[v] || v) : '—', help: true },
+    { key: 'product_id',      label: 'Variety',  fmt: (v) => productLabel(v) },
+    { key: 'length_cm',       label: 'Length',   fmt: (v) => v != null ? `${v} cm` : '—' },
+    { key: 'stems_ordered',   label: 'Stems',    fmt: (v) => fmtInt(v) },
+    { key: 'stems_per_bunch', label: 'St/bunch', fmt: (v) => fmtInt(v) },
+    { key: 'price_ordered',   label: 'Price',    fmt: (v) => fmtPrice(v) },
+  ]
+
   const beginCounter = () => {
     seedCounterFormFromLine(line)
     setCounterMode(true)
@@ -364,60 +395,76 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
           <div className="empty"><i className="ti ti-loader" /><div className="empty-title">Loading…</div></div>
         ) : line ? (
           <>
+            {/* Identity */}
             <div className="drawer-section">
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>
-                {line.products?.name || '—'}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 3, overflowWrap: 'anywhere' }}>
+                    {line.products?.name || '—'}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>
+                    Box {line.box_nr ?? '—'} · {line.box_type || '—'} · MARK {line.boxmark || '—'}
+                  </div>
+                </div>
+                <span className={`badge ${STATE_BADGE[line.state] || 'badge-draft'}`} style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
+                  {STATE_LABEL[line.state] || line.state}
+                </span>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, fontFamily: 'var(--mono)' }}>
-                Box {line.box_nr ?? '—'} · {line.box_type || '—'} · MARK {line.boxmark || '—'}
+            </div>
+
+            {/* Whose move */}
+            {storyMsg && (
+              <div style={{ background: storyBg, color: storyColor, padding: '10px 14px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, margin: '12px 16px' }}>
+                {storyMsg}
               </div>
-              <div className="kv-grid">
-                <KV label="Length"   value={line.length_cm == null ? '—' : `${line.length_cm} cm`} />
-                <KV label="Stems"    value={fmtInt(line.stems_ordered)} />
-                <KV label="St/Bunch" value={fmtInt(line.stems_per_bunch)} />
-                <KV label="Price"    value={fmtPrice(line.price_ordered)} />
-                <KV
-                  labelExtra={
-                    <span className="ot-help-wrap">
-                      <button className="ot-help-btn" onClick={() => setOtHelp(o => !o)} aria-label="Order type help" type="button">
-                        <i className="ti ti-help" aria-hidden="true" />
-                      </button>
-                      {otHelp && (
-                        <div className="ot-help-popover" onClick={e => e.stopPropagation()}>
-                          <p><strong>OM (Open Market):</strong> a one-time order from the grower's live stock.</p>
-                          <p><strong>RO (Repeating Order):</strong> an order that repeats weekly until the buyer wishes to stop.</p>
-                          <p><strong>SO (Standing Order):</strong> a fixed order contract between the grower and the buyer for a set period of time.</p>
-                          <p style={{ marginTop: 8, fontSize: 11.5, color: 'var(--text-3)' }}>All RO's and SO's must be contracted separately.</p>
-                        </div>
-                      )}
-                    </span>
-                  }
-                  label="Order type"
-                  value={OT_LABEL[line.order_type] || '—'}
-                />
-                <KV label="State">
-                  <span className={`badge ${STATE_BADGE[line.state] || 'badge-draft'}`} style={{ minWidth: 78, textAlign: 'center', justifyContent: 'center', display: 'inline-flex' }}>
-                    {STATE_LABEL[line.state] || line.state}
-                  </span>
-                </KV>
+            )}
+
+            {/* On the table — the 6 negotiable terms as they currently stand */}
+            <div className="drawer-section">
+              <div className="drawer-section-title">On the table</div>
+              <div className="deal-grid">
+                {dealDef.map(d => {
+                  const cur = d.key === 'product_id' ? line.product_id : line[d.key]
+                  const isChanged = Object.prototype.hasOwnProperty.call(changedWas, d.key)
+                  return (
+                    <div key={d.key} className={`deal-cell${isChanged ? ' changed' : ''}`}>
+                      <div className="deal-label">
+                        {d.label}
+                        {d.help && (
+                          <span className="ot-help-wrap">
+                            <button className="ot-help-btn" onClick={() => setOtHelp(o => !o)} aria-label="Order type help" type="button">
+                              <i className="ti ti-help" aria-hidden="true" />
+                            </button>
+                            {otHelp && (
+                              <div className="ot-help-popover" onClick={e => e.stopPropagation()}>
+                                <p><strong>OM (Open Market):</strong> a one-time order from the grower's live stock.</p>
+                                <p><strong>RO (Repeating Order):</strong> an order that repeats weekly until the buyer wishes to stop.</p>
+                                <p><strong>SO (Standing Order):</strong> a fixed order contract between the grower and the buyer for a set period of time.</p>
+                                <p style={{ marginTop: 8, fontSize: 11.5, color: 'var(--text-3)' }}>All RO's and SO's must be contracted separately.</p>
+                              </div>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                      <div className="deal-value">
+                        <span className={isChanged ? 'deal-now' : ''}>{d.fmt(cur)}</span>
+                        {isChanged && <span className="deal-was"> · was {d.fmt(changedWas[d.key])}</span>}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
               {line.notes_buyer && (
-                <div style={{ marginTop: 10, padding: 10, background: 'var(--surface-2)', borderRadius: 6, fontSize: 12.5 }}>
+                <div style={{ marginTop: 12, padding: 10, background: 'var(--surface-2)', borderRadius: 6, fontSize: 12.5 }}>
                   <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--text-3)', marginBottom: 4 }}>Buyer note</div>
                   {line.notes_buyer}
                 </div>
               )}
             </div>
 
-            {storyMsg && (
-              <div style={{ background: storyBg, color: storyColor, padding: '10px 14px', borderRadius: 7, fontSize: 12.5, fontWeight: 500, margin: '8px 16px' }}>
-                {storyMsg}
-              </div>
-            )}
-
             {/* Actions */}
             {(canConfirm || canCounter || canCancel || canReopen) && (
-              <div className="drawer-section" style={{ backgroundColor: '#f5ede0' }}>
+              <div className="drawer-section">
                 {counterMode ? (
                   <>
                     <div className="drawer-section-title">Your counter offer</div>
@@ -498,7 +545,7 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
                         </button>
                       )}
                       {canCancel && (
-                        <button className="btn btn-ghost btn-sm" onClick={handleCancel} disabled={submitting}>
+                        <button className="btn btn-danger btn-sm" onClick={handleCancel} disabled={submitting}>
                           <i className="ti ti-x" aria-hidden="true" /> Cancel
                         </button>
                       )}
@@ -538,18 +585,6 @@ export default function LineDrawer({ poId, initialCounterMode, onClose, onAction
         ) : null}
       </div>
     </>
-  )
-}
-
-function KV({ label, value, children, labelExtra }) {
-  return (
-    <div className="kv">
-      <div className="kv-label" style={{ display: 'inline-flex', alignItems: 'center' }}>
-        {label}
-        {labelExtra}
-      </div>
-      <div className="kv-value">{children ?? value}</div>
-    </div>
   )
 }
 
