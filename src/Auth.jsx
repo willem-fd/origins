@@ -42,9 +42,6 @@ export default function Auth({ onLogin, forceMode, onResetDone }) {
         {mode === 'forgot' && <ForgotForm onBack={() => setMode('login')} />}
         {mode === 'reset'  && <ResetForm onDone={() => { window.history.replaceState({}, '', '/'); onResetDone ? onResetDone() : setMode('login') }} />}
       </div>
-      <footer className="auth-foot">
-        <span>© Origins · A platform for flower trade</span>
-      </footer>
     </div>
   )
 }

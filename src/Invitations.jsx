@@ -507,7 +507,6 @@ export function AcceptInvitation({ token, onDone }) {
           </div>
         )}
       </div>
-      <footer className="auth-foot"><span>© Origins · A platform for flower trade</span></footer>
     </div>
   )
 }
